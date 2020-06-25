@@ -4,21 +4,26 @@ import cv2
 import numpy as np
 
 
-# イカランプの位置
-# イエローチーム
-TLBR_y = [(480, 40), (920, 100)]    # TopLeft, BottomRight
-# ブルーチーム 
-TLBR_b = [(1000, 40), (1440, 100)]
-# イエローとブルーをまとめる
-TLBR_list = [TLBR_y, TLBR_b]
 
 # ピンチの位置
 # イエローチーム
-TLBR_y_danger = [(420, 27), (600, 108)]
+TLBR_y_danger = [(420, 27), (600, 108)]    # TopLeft, BottomRight
 # ブルーチーム
 TLBR_b_danger = [(1320, 27), (1500, 108)]
 # イエローとブルーをまとめる
 TLBR_list_danger = [TLBR_y_danger, TLBR_b_danger]
+
+
+# 各プレイヤーのイカランプの位置
+# 通常～微優劣
+TL_lamp_n = [(518, 47), (629, 47), (709, 47), (792, 47), (1047, 47), (1130, 47), (1220, 47), (1311, 47)] 
+BR_lamp_n = [(608, 92), (699, 92), (789, 92), (872, 92), (1127, 92), (1210, 92), (1290, 92), (1401, 92)]
+# イエローがピンチ
+TL_lamp_y = [(570, 50), (646, 50), (721, 50), (797, 50), (1042, 42), (1138, 42), (1236, 42), (1332, 42)]
+BR_lamp_y = [(642, 90), (718, 90), (793, 90), (869, 90), (1130, 96), (1226, 96), (1324, 96), (1420, 96)]
+# ブルーがピンチ
+TL_lamp_b = [(498, 42), (596, 42), (692, 42), (789, 42), (1049, 50), (1125, 50), (1200, 50), (1276, 50)] 
+BR_lamp_b = [(586, 96), (684, 96), (780, 96), (877, 96), (1121, 90), (1197, 90), (1272, 90), (1348, 90)]
 
 
 # HSVの閾値(0~179, 0~255, 0~255)
@@ -37,26 +42,13 @@ hsv_sp_max = (179, 128, 255)
 # やられた状態
 hsv_d_min = (0, 0, 0)
 hsv_d_max = (255, 16, 255)
-# イエローとブルーをまとめる
-hsv_a_min = [hsv_y_min, hsv_b_min]
-hsv_a_max = [hsv_y_max, hsv_b_max]
 
-
-# 各プレイヤーのイカランプの位置
-# 通常～微優劣
-TL_lamp_n = [(518, 47), (629, 47), (709, 47), (792, 47), (1047, 47), (1130, 47), (1220, 47), (1311, 47)] 
-BR_lamp_n = [(608, 92), (699, 92), (789, 92), (872, 92), (1127, 92), (1210, 92), (1290, 92), (1401, 92)]
-# イエローがピンチ
-TL_lamp_y = [(570, 50), (646, 50), (721, 50), (797, 50), (1042, 42), (1138, 42), (1236, 42), (1332, 42)]
-BR_lamp_y = [(642, 90), (718, 90), (793, 90), (869, 90), (1130, 96), (1226, 96), (1324, 96), (1420, 96)]
-# ブルーがピンチ
-TL_lamp_b = [(498, 42), (596, 42), (692, 42), (789, 42), (1049, 50), (1125, 50), (1200, 50), (1276, 50)] 
-BR_lamp_b = [(586, 96), (684, 96), (780, 96), (877, 96), (1121, 90), (1197, 90), (1272, 90), (1348, 90)]
 
     
-def judgeLamp(frame):
-    ''' イカランプの判別 '''                 
-    # イカランプの大きさ 0:normal  1:danger of yellow  2:danger of blue
+def judgeDanger(frame):
+    ''' ピンチの判別 '''            
+    # ピンチ！は英語版だとDnager!らしい     
+    # イカランプの大きさ 0:normal  1:danger yellow  2:danger blue
     danger_num = 0
     
     for i in (0, 1):
@@ -81,11 +73,15 @@ def judgeLamp(frame):
             if s > 1000:
                 danger_num = i + 1 
                 
+    return danger_num
 
-    # イカランプの状態リスト 0:dead  1:alive  2:sp
-    lamp_list = [0, 0, 0, 0, 0, 0, 0, 0] 
+
+def judgeLamp(frame, danger_num, player_num):
+    ''' イカランプの判別 '''
+    # イカランプの状態を数字で記録 0:dead  1:alive  2:sp
+    doa = 0     # Dead or Alive
     # それぞれの状態の面積を記録しておく
-    surf_list = [[0] * 8 for i in range(3)]
+    surf_list = [0, 0, 0]
     
     if danger_num == 0:
         TL_lamp = TL_lamp_n
@@ -97,89 +93,79 @@ def judgeLamp(frame):
         
     elif danger_num == 2:
         TL_lamp = TL_lamp_b
-        BR_lamp = BR_lamp_b   
+        BR_lamp = BR_lamp_b        
         
     
-    for i in (0, 1):
-        # イカランプ部分をトリミング
-        TL = TLBR_list[i][0]
-        BR = TLBR_list[i][1]
-        img_trimmed = frame[TL[1] : BR[1], TL[0] : BR[0]] 
+    # イカランプ部分をトリミング
+    TL = TL_lamp[player_num-1]
+    BR = BR_lamp[player_num-1]
+    img_trimmed = frame[TL[1] : BR[1], TL[0] : BR[0]] 
+    
+    # BGR -> RGB -> HSV
+    img_bgr = cv2.cvtColor(img_trimmed, cv2.COLOR_RGB2BGR)
+    img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)  
+    
+    # dead の判定
+    img_bin = cv2.inRange(img_hsv, hsv_d_min, hsv_d_max)
+    num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
+    
+    num_labels = num_labels - 1
+    stats = np.delete(stats, 0, 0)
+    center = np.delete(center, 0, 0)
         
-        # BGR -> RGB -> HSV
-        img_bgr = cv2.cvtColor(img_trimmed, cv2.COLOR_RGB2BGR)
-        img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)       
-        
-        # dead の判定
-        img_bin = cv2.inRange(img_hsv, hsv_d_min[i], hsv_d_max[i])
-        num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
-        
-        num_labels = num_labels - 1
-        stats = np.delete(stats, 0, 0)
-        center = np.delete(center, 0, 0)
-            
-        for index in range(num_labels):
-            s = stats[index][4]
-            mx = int(center[index][0]) + TL[0]
-            # かたまりの場所がイカランプの範囲なら面積を加算
-            for player_num in range(int(4*i), int(4*(i+1))):                        
-                if TL_lamp[player_num][0] < mx < BR_lamp[player_num][0]:
-                    surf_list[0][player_num] += s
+    for index in range(num_labels):
+        s = stats[index][4]
+        surf_list[0] += s
    
-        # alive の判定
-        img_bin = cv2.inRange(img_hsv, hsv_a_min[i], hsv_a_max[i])
-        num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
+    # alive の判定
+    if player_num <= 4:
+        hsv_a_max = hsv_y_max
+        hsv_a_min = hsv_y_min
+    elif player_num >= 5:
+        hsv_a_max = hsv_b_max
+        hsv_a_min = hsv_b_min        
         
-        num_labels = num_labels - 1
-        stats = np.delete(stats, 0, 0)
-        center = np.delete(center, 0, 0)
-               
-        for index in range(num_labels):
-            s = stats[index][4]
-            mx = int(center[index][0]) + TL[0]
-            
-            for player_num in range(int(4*i), int(4*(i+1))):                        
-                if TL_lamp[player_num][0] < mx < BR_lamp[player_num][0]:
-                    surf_list[1][player_num] += s
-                    
-        # sp の判定
-        img_bin = cv2.inRange(img_hsv, hsv_sp_min, hsv_sp_max)
-        num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
+    img_bin = cv2.inRange(img_hsv, hsv_a_min, hsv_a_max)
+    num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
     
-        num_labels = num_labels - 1
-        stats = np.delete(stats, 0, 0)
-        center = np.delete(center, 0, 0)
-            
-        for index in range(num_labels):
-            s = stats[index][4]
-            mx = int(center[index][0]) + TL[0]
-
-            for player_num in range(int(4*i), int(4*(i+1))):                        
-                if TL_lamp[player_num][0] < mx < BR_lamp[player_num][0]:
-                    surf_list[2][player_num] += s
-         
-    # 総面積が一番大きい状態をリストに記録
-    for i in range(8):
-        s0 = surf_list[0][i]
-        s1 = surf_list[1][i]
-        s2 = surf_list[2][i]
+    num_labels = num_labels - 1
+    stats = np.delete(stats, 0, 0)
+    center = np.delete(center, 0, 0)
+           
+    for index in range(num_labels):
+        s = stats[index][4]
+        surf_list[1] += s
         
-        doa = np.argmax([s0, s1, s2])
-        lamp_list[i] = doa
-                        
+    # sp の判定
+    img_bin = cv2.inRange(img_hsv, hsv_sp_min, hsv_sp_max)
+    num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
 
-    return lamp_list, surf_list
+    num_labels = num_labels - 1
+    stats = np.delete(stats, 0, 0)
+    center = np.delete(center, 0, 0)
+        
+    for index in range(num_labels):
+        s = stats[index][4]
+        surf_list[2] += s
+        
+    # 面積リストの値(総面積)が一番大きいインデックス -> イカランプの状態    
+    doa = np.argmax(surf_list)
 
+    return doa, surf_list
 
     
 def main():
     ''' メイン処理 '''
-    # img_path = 'image_1.png'
-    # frame = cv2.imread(img_path)
-    # lamp_list, surf_list = judgeLamp(frame)
+    img_path = 'image_9.png'
+    frame = cv2.imread(img_path)
     
-    # print(lamp_list)
-    # print(surf_list)
+    danger_num = judgeDanger(frame)
+    
+    for player_num in range(1, 9):
+        doa, surf_list = judgeLamp(frame, danger_num, player_num)
+        
+        print(doa)
+        print(surf_list)
     
         
 if __name__ == "__main__":
