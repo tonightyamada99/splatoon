@@ -159,9 +159,11 @@ def main():
     img_path = 'image_9.png'
     frame = cv2.imread(img_path)
     
+    player_list = [i for i in range(1, 9)]
+    
     danger_num = judgeDanger(frame)
     
-    for player_num in range(1, 9):
+    for player_num in player_list:
         doa, surf_list = judgeLamp(frame, danger_num, player_num)
         
         print(doa)

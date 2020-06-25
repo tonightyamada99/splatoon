@@ -17,16 +17,19 @@ BR_lamp_n = [(608, 92), (699, 92), (789, 92), (872, 92), (1127, 92), (1210, 92),
 
 # 対象動画
 match = 'PL-DAY2_1-1'
-player_list = [1, 5, 8]
+player_list = [i for i in range(1, 9)]
 
 frame_start = 1264
 frame_end = 19436
-frame_end = 1500
+frame_end = 2000
 
 frame_skip = 30
 
-video_path = 'D:\\splatoon_movie\\PremiereLeague\\DAY2\\' + match + '.avi'
+video_path = match + '.avi'
 video_name, video_ext = os.path.splitext(os.path.basename(video_path))
+
+out_video_path = video_name + '_test.avi'
+csv_path = video_name + '_test.csv'
 
 
 
@@ -98,7 +101,7 @@ def work():
     video.release
 
     # CSV出力
-    with open(video_name + '_test.csv', 'w') as file:
+    with open(csv_path, 'w') as file:
         writer = csv.writer(file, lineterminator='\n')
         writer.writerows(record)
         
@@ -112,7 +115,7 @@ def workOutputVideo():
 
     # 出力設定
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    out = cv2.VideoWriter(video_name + '_test.avi', fourcc, fps, (int(W), int(H)))
+    out = cv2.VideoWriter(out_video_path, fourcc, fps, (int(W), int(H)))
     
     # 以下フレーム処理結果の準備
     # 記録用のリスト
@@ -205,7 +208,7 @@ def workOutputVideo():
     out.release
 
     # CSV出力
-    with open(video_name + '_test.csv', 'w') as file:
+    with open(csv_path, 'w') as file:
         writer = csv.writer(file, lineterminator='\n')
         writer.writerows(record)
         
@@ -213,9 +216,9 @@ def workOutputVideo():
 
 def main():
     ''' メイン処理 '''
-    # work()
+    work()
     
-    workOutputVideo()
+    # workOutputVideo()
     
         
 if __name__ == "__main__":
