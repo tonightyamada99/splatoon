@@ -7,8 +7,6 @@ import os.path
 import ikaLamp
 import ikaTracking
 
-# 2値化の閾値(0～255)
-threshold = 220
 
 # 各プレイヤーのイカランプの位置
 TL_lamp_n = [(518, 47), (629, 47), (709, 47), (792, 47), (1047, 47), (1130, 47), (1220, 47), (1311, 47)] 
@@ -21,15 +19,15 @@ player_list = [i for i in range(1, 9)]
 
 frame_start = 1264
 frame_end = 19436
-frame_end = 2000
 
+# 何フレームごとに処理を行うか
 frame_skip = 30
 
-video_path = match + '.avi'
+video_path = 'D:\splatoon_movie\PremiereLeague\DAY2\\' + match + '.avi'
 video_name, video_ext = os.path.splitext(os.path.basename(video_path))
 
 out_video_path = video_name + '_test.avi'
-csv_path = video_name + '_test.csv'
+csv_path = video_name + '_test2.csv'
 
 
 
@@ -57,7 +55,7 @@ def work():
     gray_all = [[]]  # index 0 はダミー
     for player_num in range(1,9):
         img_tmp = cv2.imread('PL-DAY2_1-1_name_' + str(player_num) + '.png', 0)
-        ret, gray_tmp = cv2.threshold(img_tmp, threshold, 255, cv2.THRESH_BINARY)
+        gray_tmp = ikaTracking.nameBinarization(img_tmp, player_num)
         gray_all.append(gray_tmp)
 
     
@@ -87,10 +85,11 @@ def work():
 
                     # ポジション
                     gray_name = gray_all[player_num]
-                    point_x, point_y, maxVal = ikaTracking.name(frame, gray_name)
+                    point_x, point_y, maxVal = ikaTracking.name(frame, gray_name, player_num)
                     # 座標は幅・高さで割って比率で記録
                     record_frame.append(point_x / W)
                     record_frame.append(point_y / H)
+                    # 一致率（-1~1）を記録
                     record_frame.append(maxVal)
                 
                 record.append(record_frame)
@@ -135,7 +134,7 @@ def workOutputVideo():
     gray_all = [[]]  # index 0 はダミー
     for player_num in range(1,9):
         img_tmp = cv2.imread('PL-DAY2_1-1_name_' + str(player_num) + '.png', 0)
-        ret, gray_tmp = cv2.threshold(img_tmp, threshold, 255, cv2.THRESH_BINARY)
+        gray_tmp = ikaTracking.nameBinarization(img_tmp, player_num)
         gray_all.append(gray_tmp)
     
 
