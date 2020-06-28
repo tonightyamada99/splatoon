@@ -6,13 +6,14 @@ import os
 import os.path
 import numpy as np
 
-
-
-TL_time_ratio = (0.475, 0.05)      # at FHD ( 912, 54)
-BR_time_ratio = (0.525, 0.091666)  # at FHD (1008, 99)                   
-
+                
+# 位置の座標
+# 画面サイズに可変で対応するために比率で設定
 TL_count_ratio = [(804/1920, 154/1080), (1026/1920, 154/1080)]  # at FHD 1920*1080
 BR_count_ratio = [(894/1920, 208/1080), (1116/1920, 208/1080)]
+
+TL_zones_ratio = [( 916/1920, 158/1080), ( 916/1920, 144/1080), ( 916/1920, 197/1080)]
+BR_zones_ratio = [(1004/1920, 194/1080), (1004/1920, 174/1080), (1004/1920, 227/1080)]
 
 
 # HSVの閾値
@@ -25,9 +26,14 @@ hsv_blu_max = (175, 255, 255)
 # 白
 hsv_wht_min = (0, 0, 0)
 hsv_wht_max = (179, 128, 255)
-# 黄と青と白
-hsv_all_min = [hsv_yel_min, hsv_blu_min, hsv_wht_min]
-hsv_all_max = [hsv_yel_max, hsv_blu_max, hsv_wht_max]
+# 黒
+hsv_blk_min = (0, 0, 0)
+hsv_blk_max = (179, 128, 128)
+# 黄と青と黒をまとめる
+# mixとminとmaxで可読性最悪とか言わない
+hsv_mix_min = [hsv_yel_min, hsv_blu_min, hsv_blk_min]
+hsv_mix_max = [hsv_yel_max, hsv_blu_max, hsv_blk_max]
+
 
 # カウント表示の面積の一致率の閾値
 thd_srf = 2000
@@ -58,7 +64,7 @@ def zonesControl(frame):
         # RGB -> BGR -> HSV
         img_bgr = cv2.cvtColor(img_trimmed, cv2.COLOR_RGB2BGR)
         img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-        bin_trm = cv2.inRange(img_hsv, hsv_all_min[i], hsv_all_max[i])
+        bin_trm = cv2.inRange(img_hsv, hsv_mix_min[i], hsv_mix_max[i])
         # それぞれの色で二値化
         num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(bin_trm)
         
@@ -173,24 +179,98 @@ def zonesCount(frame, zones_ctrl):
     return count_list
 
 
+def zonesRatio(frame, zones_num):
+    ''' エリアの塗り割合を認識 '''
+    H, W = frame.shape[:2]
     
+    # 記録用配列
+    zones_ratio=[]
+    
+    # エリアが1個
+    if zones_num == 1:
+        idx_list = [0]
+    # エリアが2個
+    elif zones_num == 2:
+        idx_list = [1, 2]
+    else:
+        idx_list = []   
+
+        
+    for i in idx_list:
+        # エリア塗り状況表示の切り取り
+        TL_zones = (round(W * TL_zones_ratio[i][0]), round(H * TL_zones_ratio[i][1]))
+        BR_zones = (round(W * BR_zones_ratio[i][0]), round(H * BR_zones_ratio[i][1]))
+        
+        img_trm = frame[TL_zones[1] : BR_zones[1], TL_zones[0] : BR_zones[0]]
+       
+        # 色ごとに面積を計算 0:yellow 1:blue 2:black
+        surf_list = [0, 0, 0]
+        for color in range(3):
+            # RGB -> BGR -> HSV
+            img_bgr = cv2.cvtColor(img_trm, cv2.COLOR_RGB2BGR)
+            img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+            bin_trm = cv2.inRange(img_hsv, hsv_mix_min[color], hsv_mix_max[color])
+            # それぞれの色で二値化
+            num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(bin_trm)
+            
+            # 最大のラベルは画面全体を覆う黒なので不要．データを削除
+            num_labels = num_labels - 1
+            stats = np.delete(stats, 0, 0)
+            center = np.delete(center, 0, 0)
+
+            for index in range(num_labels):            
+                s = stats[index][4]
+                surf_list[color] += s
+                
+        surf_sum = surf_list[0] + surf_list[1] + surf_list[2]
+        
+        if surf_sum != 0:
+            ratio_yel = surf_list[0] / surf_sum
+            ratio_blu = surf_list[1] / surf_sum
+            # 割合を記録
+            zones_ratio.append(ratio_yel)
+            zones_ratio.append(ratio_blu)
+        else:
+            # 0で割ってはいけない
+            zones_ratio.append(0)
+            zones_ratio.append(0)
+ 
+
+    return zones_ratio
+
+
+
 def main():
     ''' メイン処理 ''' 
-    # img_path = 'img_count_20.png'
-    # frame = cv2.imread(img_path) 
+    # for i in range(1, 21):
+        
+    #     img_path = 'img_count_' + str(i) + '.png'
+    #     frame = cv2.imread(img_path) 
+        
+    #     print('====================================')
+    #     print(img_path)
+    #     zones_num = 1
+    #     zones_ratio = zonesRatio(frame, zones_num)
+    #     print(zones_ratio)
+    
     
     # zones_ctrl = zonesControl(frame)
     # count_list = zonesCount(frame, zones_ctrl)
     
     # print(count_list)
 
-
-    match = 'PL-DAY2_3-3'
+    
+    match = 'PL-DAY2_2-3'
+    zones_num = 2
     
     frame_start = 910
     frame_end = 14087
+    # frame_end = 1200
+
+    frame_start = 1053
+    frame_end = 20416
     
-    # 何フレームごとに処理を行うか
+    # 何フレームごとに処理を行うか 
     frame_skip = 1
     
     video_path = 'D:\splatoon_movie\PremiereLeague\DAY2\\' + match + '.avi'
@@ -204,8 +284,17 @@ def main():
     H = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
     
     # 以下フレーム処理結果の準備
-    # 記録用のリスト
-    count_list = [['fcount', 'y_count', 'b_count']]
+    # 記録用のリスト    
+    list_top = ['fcount']
+    # カウント
+    list_top.append('y_count')
+    list_top.append('b_count')
+    # 塗り割合
+    for i in range(zones_num):
+        list_top.append('y_ratio_' + str(i+1))
+        list_top.append('b_ratio_' + str(i+1))
+        
+    count_list = [list_top]
 
     
     # 動画処理
@@ -221,11 +310,18 @@ def main():
         if frame_start <= fcount < frame_end:
             if (fcount- frame_start) % frame_skip == 0:              
                 # フレームに対しての処理
+                # カウント
                 zones_ctrl = zonesControl(frame)
                 count = zonesCount(frame, zones_ctrl)
-          
-                count_list.append([fcount] +  count)
+                # count = [0, 0]
                 
+                # 塗り割合
+                zones_ratio = zonesRatio(frame, zones_num)
+          
+                # 出力リストに記録
+                count_list.append([fcount] + count + zones_ratio)
+                
+                                
         if fcount == frame_end:
             break
                 
