@@ -6,6 +6,7 @@ import os.path
 
 import ikaLamp
 import ikaTracking
+import ikaColor
 
 
 # 各プレイヤーのイカランプの位置
@@ -23,12 +24,16 @@ frame_end = 19436
 # 何フレームごとに処理を行うか
 frame_skip = 30
 
-video_path = 'D:\splatoon_movie\PremiereLeague\DAY2\\' + match + '.avi'
+#あとみーのディレクトリ
+video_path = 'C:\\Users\\nfkat\\Documents\\splatoon\\PremiereLeague\\' + match + '.mp4'
+#video_path = 'D:\splatoon_movie\PremiereLeague\DAY2\\' + match + '.avi'
 video_name, video_ext = os.path.splitext(os.path.basename(video_path))
 
 out_video_path = video_name + '_test.avi'
 csv_path = video_name + '_test2.csv'
 
+# プレイヤーの周囲何ピクセルの色を取得するか
+color_r = 50
 
 
 def work():
@@ -47,6 +52,11 @@ def work():
         list_top.append(str(player_list[i]) + '_point_x')
         list_top.append(str(player_list[i]) + '_point_y')
         list_top.append(str(player_list[i]) + '_maxVal')
+
+        # 周辺インク割合
+        list_top.append(str(player_list[i]) + '_color_yellow')
+        list_top.append(str(player_list[i]) + '_color_blue')
+        list_top.append(str(player_list[i]) + '_color_other')
      
     record = [list_top]
         
@@ -91,6 +101,11 @@ def work():
                     record_frame.append(point_y / H)
                     # 一致率（-1~1）を記録
                     record_frame.append(maxVal)
+                    # 色
+                    color = ikaColor.getColorRatio(frame, point_x, point_y, color_r)
+                    record_frame.append(color[0])
+                    record_frame.append(color[1])
+                    record_frame.append(color[2])
                 
                 record.append(record_frame)
                 
