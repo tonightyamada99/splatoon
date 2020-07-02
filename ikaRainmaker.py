@@ -3,6 +3,7 @@
 import cv2
 import csv
 import os
+import csvread
 import os.path
 import numpy as np
 
@@ -14,7 +15,6 @@ BR_count_ratio = [(1490/1920, 218/1080), (1490/1920, 258/1080)]
 # ガチホコ位置表示, ゲージの左右端の座標
 TL_scale_ratio = [( 490/1920, 130/1080), ( 514/1920, 155/1080)]
 BR_scale_ratio = [(1430/1920, 178/1080), (1405/1920, 155/1080)]
-
 
 
 # HSVの閾値
@@ -38,10 +38,13 @@ hsv_mix_max = [hsv_yel_max, hsv_blu_max, hsv_blk_max]
 # その他の閾値 threshold
 # テンプレートマッチングの一致率の閾値
 thd_val = 0.85
+# 数字の一致率の閾値
+thd_num = 0.8
+
 # カウント表示の幅
 width_count = 60/1920
 # 数字の幅
-width_num_count = 10
+width_num_count = 5
 
 
 # 数字画像用 アルファチーム・ブラボーチーム
@@ -133,13 +136,21 @@ def getCount(frame):
         if loc == 0:
             continue
         
+        # カウント表示切り取り
         x_left  = int(loc - width_count * W / 2)
         x_right = int(loc + width_count * W / 2)
-        
         TL_count = (x_left , round(H * TL_count_ratio[1][1]))
-        BR_count = (x_right, round(H * BR_count_ratio[1][1]))  
+        BR_count = (x_right, round(H * BR_count_ratio[1][1])) 
         
         img_trm = frame[TL_count[1] : BR_count[1], TL_count[0] : BR_count[0]]
+
+        # RGB -> BGR -> HSV
+        img_bgr = cv2.cvtColor(img_trm, cv2.COLOR_RGB2BGR)
+        img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+        # HSV閾値で二値化
+        bin_trm = cv2.inRange(img_hsv, hsv_wht_min, hsv_wht_max)
+        # 白黒反転
+        inv_trm = cv2.bitwise_not(bin_trm)
                
         # 0~9の数字を読み込んで比較する
         num_list = []
@@ -149,8 +160,14 @@ def getCount(frame):
             img_path = '.\\count_rainmaker\\count_rain_' + ab_list[i] + '_' + str(num) + '.png'  
             img_num = cv2.imread(img_path)     
             
+            # 白黒画像に変換
+            img_bgr = cv2.cvtColor(img_num, cv2.COLOR_RGB2BGR)
+            img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+            bin_num = cv2.inRange(img_hsv, hsv_wht_min, hsv_wht_max)
+            inv_num = cv2.bitwise_not(bin_num)
+
             # テンプレートマッチングで物体検出
-            jug = cv2.matchTemplate(img_trm, img_num, cv2.TM_CCOEFF_NORMED)
+            jug = cv2.matchTemplate(inv_trm, inv_num, cv2.TM_CCOEFF_NORMED)
             
             # 一致率をリスト化（正直この処理のメカニズムはよく分らん）
             val_all = np.reshape(jug, jug.shape[0]*jug.shape[1])
@@ -163,7 +180,7 @@ def getCount(frame):
             
             # 一致率が閾値より大きい場合は数字と場所を記録
             # 同じ数字は最高でも２回しか出てこない
-            if val_1st > thd_val:         
+            if val_1st > thd_num:         
                 y_1st, x_1st = np.unravel_index(idx_1st, jug.shape)
                 num_list.append(num)
                 x_list.append(x_1st)
@@ -173,7 +190,7 @@ def getCount(frame):
                 val_2nd = val_all[idx_2nd]
                 
                 # 一致率が閾値より大きい場合「かつ」１番目と場所が近くない場合は数字と場所を記録
-                if val_2nd > thd_val:        
+                if val_2nd > thd_num:        
                     y_2nd, x_2nd = np.unravel_index(idx_2nd, jug.shape)
                     
                     if abs(x_1st - x_2nd) > width_num_count:
@@ -197,65 +214,25 @@ def getCount(frame):
     return count_list
 
 
-def getRatio(frame, zones_num):
-    ''' エリアの塗り割合を認識 '''
-    H, W = frame.shape[:2]
+def correctCount(count_list):
     
-    # 記録用配列
-    zones_ratio=[]
-    
-    # エリアが1個
-    if zones_num == 1:
-        idx_list = [0]
-    # エリアが2個
-    elif zones_num == 2:
-        idx_list = [1, 2]
-    else:
-        idx_list = []   
-
+    cor_count_list = [100]
+    count_pre = 100
+    for i in range(1, len(count_list)):     
+        count_now = count_list[i]
+        dif = count_pre - count_now
         
-    for i in idx_list:
-        # エリア塗り状況表示の切り取り
-        TL_zones = (round(W * TL_zones_ratio[i][0]), round(H * TL_zones_ratio[i][1]))
-        BR_zones = (round(W * BR_zones_ratio[i][0]), round(H * BR_zones_ratio[i][1]))
-        
-        img_trm = frame[TL_zones[1] : BR_zones[1], TL_zones[0] : BR_zones[0]]
-       
-        # 色ごとに面積を計算 0:yellow 1:blue 2:black
-        surf_list = [0, 0, 0]
-        for color in range(3):
-            # RGB -> BGR -> HSV
-            img_bgr = cv2.cvtColor(img_trm, cv2.COLOR_RGB2BGR)
-            img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
-            bin_trm = cv2.inRange(img_hsv, hsv_mix_min[color], hsv_mix_max[color])
-            # それぞれの色で二値化
-            num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(bin_trm)
-            
-            # 最大のラベルは画面全体を覆う黒なので不要．データを削除
-            num_labels = num_labels - 1
-            stats = np.delete(stats, 0, 0)
-            center = np.delete(center, 0, 0)
-
-            for index in range(num_labels):            
-                s = stats[index][4]
-                surf_list[color] += s
-                
-        surf_sum = surf_list[0] + surf_list[1] + surf_list[2]
-        
-        if surf_sum != 0:
-            ratio_yel = surf_list[0] / surf_sum
-            ratio_blu = surf_list[1] / surf_sum
-            # 割合を記録
-            zones_ratio.append(ratio_yel)
-            zones_ratio.append(ratio_blu)
+        if dif == 0 or dif == 1:
+            cor_count = count_now
         else:
-            # 0で割ってはいけない
-            zones_ratio.append(0)
-            zones_ratio.append(0)
- 
-
-    return zones_ratio
-
+            cor_count = count_pre
+            
+        cor_count_list.append(cor_count)
+        
+        count_pre = cor_count
+        
+    
+    return cor_count_list
 
 
 def main():
@@ -279,20 +256,79 @@ def main():
     #     cv2.destroyAllWindows()
     
 
+    # match = 'PL-DAY3_3-1'
+    # zones_num = 1
+
+    # frame_start = 995
+    # frame_end = 6415
+    
+    # # 何フレームごとに処理を行うか 
+    # frame_skip = 1
+    
+    # video_path = 'D:\splatoon_movie\PremiereLeague\DAY3\\' + match + '.avi'
+    # video_name, video_ext = os.path.splitext(os.path.basename(video_path))
+    
+    # csv_path = video_name + '_count.csv'
+
+
+    # read_list = csvread.csvread(csv_path, 's')
+    
+    # count_list = []
+    # for i in range(1, len(read_list)):
+    #     count = int(read_list[i][3])
+    #     count_list.append(count)
+        
+    # cor_count_list_yel = correctCount(count_list)
+    
+    # count_list = []
+    # for i in range(1, len(read_list)):
+    #     count = int(read_list[i][4])
+    #     count_list.append(count)
+        
+    # cor_count_list_blu = correctCount(count_list)
+
+
+    # # 記録用のリスト    
+    # list_top = ['fcount']
+    # # カウント
+    # list_top.append('rain_ctrl')
+    # list_top.append('loc_ratio')
+    # list_top.append('cor_count_yel')
+    # list_top.append('cor_count_blu')
+    
+    # record_list = [list_top]
+    
+    # for i in range(1, len(read_list)):
+    #     fcount = read_list[i][0]
+    #     rain_ctrl = read_list[i][1]
+    #     loc_ratio = read_list[i][2] 
+    #     cor_count_yel = cor_count_list_yel[i-1]
+    #     cor_count_blu = cor_count_list_blu[i-1]        
+
+    #     record_list.append([fcount, rain_ctrl, loc_ratio, cor_count_yel, cor_count_blu])
+        
 
     
-    match = 'PL-DAY3_3-1'
     
-    frame_start = 916
-    frame_end = 17342
+    # # CSV出力
+    # out_path = video_name + '_count_cor.csv'
+    # with open(out_path, 'w') as file:
+    #     writer = csv.writer(file, lineterminator='\n')
+    #     writer.writerows(record_list)
+
+    
+    match = 'PL-DAY4_2-2'
+    
+    frame_start = 1019
+    frame_end = 19024
 
     # 何フレームごとに処理を行うか 
     frame_skip = 1
     
-    video_path = 'D:\splatoon_movie\PremiereLeague\DAY3\\' + match + '.avi'
+    video_path = 'D:\splatoon_movie\PremiereLeague\DAY4\\' + match + '.avi'
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     
-    csv_path = video_name + '_count_test.csv'
+    csv_path = video_name + '_count.csv'
 
 
     video = cv2.VideoCapture(video_path)

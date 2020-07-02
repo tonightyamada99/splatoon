@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import cv2
+import csv
+import os
+import csvread
+import os.path
 import numpy as np
 
 
@@ -28,20 +32,20 @@ BR_lamp_b = [(586, 96), (684, 96), (780, 96), (877, 96), (1121, 90), (1197, 90),
 
 # HSVの閾値(0~179, 0~255, 0~255)
 # ピンチ！
-hsv_p_min = (70, 0, 192)
-hsv_p_max = (90, 255, 255)
+hsv_dng_min = (70, 0, 192)
+hsv_dng_max = (90, 255, 255)
 # イエローチーム
-hsv_y_min = (90, 128, 128)
-hsv_y_max = (100, 255, 255)
+hsv_yel_min = (90, 128, 128)
+hsv_yel_max = (100, 255, 255)
 # ブルーチーム
-hsv_b_min = (165, 128, 128)
-hsv_b_max = (175, 255, 255)
+hsv_blu_min = (165, 128, 128)
+hsv_blu_max = (175, 255, 255)
 # スペシャル状態
-hsv_sp_min = (0, 16, 128)
-hsv_sp_max = (179, 128, 255)
-# やられた状態
-hsv_d_min = (0, 0, 0)
-hsv_d_max = (255, 16, 255)
+hsv_spw_min = (0, 16, 128)
+hsv_spw_max = (179, 128, 255)
+# やられた状態(黒)
+hsv_blk_min = (0, 0, 0)
+hsv_blk_max = (179, 16, 255)
 
 
     
@@ -60,7 +64,7 @@ def judgeDanger(frame):
         img_bgr = cv2.cvtColor(img_trimmed, cv2.COLOR_RGB2BGR)
         img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
               
-        img_bin = cv2.inRange(img_hsv, hsv_p_min, hsv_p_max)
+        img_bin = cv2.inRange(img_hsv, hsv_dng_min, hsv_dng_max)
         num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
         
         num_labels = num_labels - 1
@@ -106,7 +110,7 @@ def judgeLamp(frame, danger_num, player_num):
     img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)  
     
     # dead の判定
-    img_bin = cv2.inRange(img_hsv, hsv_d_min, hsv_d_max)
+    img_bin = cv2.inRange(img_hsv, hsv_blk_min, hsv_blk_max)
     num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
     
     num_labels = num_labels - 1
@@ -119,11 +123,11 @@ def judgeLamp(frame, danger_num, player_num):
    
     # alive の判定
     if player_num <= 4:
-        hsv_a_max = hsv_y_max
-        hsv_a_min = hsv_y_min
+        hsv_a_max = hsv_yel_max
+        hsv_a_min = hsv_yel_min
     elif player_num >= 5:
-        hsv_a_max = hsv_b_max
-        hsv_a_min = hsv_b_min        
+        hsv_a_max = hsv_blu_max
+        hsv_a_min = hsv_blu_min        
         
     img_bin = cv2.inRange(img_hsv, hsv_a_min, hsv_a_max)
     num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
@@ -137,7 +141,7 @@ def judgeLamp(frame, danger_num, player_num):
         surf_list[1] += s
         
     # sp の判定
-    img_bin = cv2.inRange(img_hsv, hsv_sp_min, hsv_sp_max)
+    img_bin = cv2.inRange(img_hsv, hsv_spw_min, hsv_spw_max)
     num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(img_bin)
 
     num_labels = num_labels - 1
@@ -154,21 +158,106 @@ def judgeLamp(frame, danger_num, player_num):
     return doa, surf_list
 
     
-def main():
-    ''' メイン処理 '''
-    img_path = 'image_9.png'
-    frame = cv2.imread(img_path)
+
+def video(video_path, frame_start, frame_end, out_path):
     
     player_list = [i for i in range(1, 9)]
     
-    danger_num = judgeDanger(frame)
+    # 何フレームごとに処理を行うか 
+    frame_skip = 1
     
-    for player_num in player_list:
-        doa, surf_list = judgeLamp(frame, danger_num, player_num)
         
-        print(doa)
-        print(surf_list)
+    video = cv2.VideoCapture(video_path)
+    W = video.get(cv2.CAP_PROP_FRAME_WIDTH)
+    H = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
     
+    # 以下フレーム処理結果の準備
+    # 記録用のリスト    
+    list_top = ['fcount']
+    for i in player_list:
+        # イカランプ Dead or Alive
+        list_top.append('doa_' + str(i))
+        
+    record_list = [list_top]
+
+    
+    # 動画処理
+    fcount = 0
+    while(video.isOpened()):
+        ret, frame = video.read()
+    
+        if not ret:
+            break
+      
+        fcount += 1  
+            
+        if frame_start <= fcount < frame_end:
+            if (fcount- frame_start) % frame_skip == 0:              
+                # フレームに対しての処理
+                # イカランプ用のピンチ判別
+                danger_num = judgeDanger(frame)
+                
+                # 記録用のリスト
+                record_frame = [fcount]
+                
+                for player_num in player_list:
+                    doa, surf_list = judgeLamp(frame, danger_num, player_num)
+                    record_frame.append(doa)
+                    
+                record_list.append(record_frame)
+                
+                
+                                
+        if fcount == frame_end:
+            break
+                
+    video.release
+
+    # CSV出力
+    with open(out_path, 'w') as file:
+        writer = csv.writer(file, lineterminator='\n')
+        writer.writerows(record_list)
+        
+
+
+
+def main():
+    ''' メイン処理 '''
+    # img_path = 'image_9.png'
+    # frame = cv2.imread(img_path)
+    
+    # player_list = [i for i in range(1, 9)]
+    
+    # danger_num = judgeDanger(frame)
+    
+    # for player_num in player_list:
+    #     doa, surf_list = judgeLamp(frame, danger_num, player_num)
+        
+    #     print(doa)
+    #     print(surf_list)
+    
+
+    match_list = [[4, '2-1'],
+                  [4, '2-2'],
+                  [4, '2-3']]
+
+    
+    for day, match in match_list:
+        video_path = 'D:\splatoon_movie\PremiereLeague\\\DAY' + str(day) + '\\PL-DAY' + str(day) + '_' + match + '.avi'  
+   
+        video_name, video_ext = os.path.splitext(os.path.basename(video_path))
+        video_dir = os.path.dirname(video_path)    
+
+        status_path = video_dir + '\\' + video_name + '_status.csv'
+        status_list = csvread.csvread(status_path, 's')
+        frame_start = int(status_list[1][4])
+        frame_end   = int(status_list[1][5])
+      
+        out_path = video_dir + '\\' + video_name + '_lamp.csv'
+        
+        video(video_path, frame_start, frame_end, out_path)
+        
+        
         
 if __name__ == "__main__":
     main()

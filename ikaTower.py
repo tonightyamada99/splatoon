@@ -14,8 +14,8 @@ import numpy as np
 問題なく動作します。
 
 異なる点
-ガチホコ   -> ホコを確保した後にカウント表示が始まる（99が最高）
-ガチヤグラ -> はじめからカウント表示がある（100が最高）
+ガチホコ   -> ホコを確保した後にカウント表示が始まる(99が最高)
+ガチヤグラ -> はじめからカウント表示がある(100が最高)
 '''
 
 
@@ -251,18 +251,18 @@ def main():
 
 
     
-    match = 'PL-DAY2_1-4'
+    match = 'PL-DAY4_2-1'
     
-    frame_start = 1049
-    frame_end = 5877
+    frame_start = 532
+    frame_end = 20114
 
     # 何フレームごとに処理を行うか 
     frame_skip = 1
     
-    video_path = 'D:\splatoon_movie\PremiereLeague\DAY2\\' + match + '.avi'
+    video_path = 'D:\splatoon_movie\PremiereLeague\DAY4\\' + match + '.avi'
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     
-    csv_path = video_name + '_count_test.csv'
+    csv_path = video_name + '_count.csv'
 
 
     video = cv2.VideoCapture(video_path)
