@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-import csv
-import os
-import csvread
-import os.path
 import numpy as np
 
                 
@@ -256,131 +252,7 @@ def main():
     #     cv2.destroyAllWindows()
     
 
-    # match = 'PL-DAY3_3-1'
-    # zones_num = 1
 
-    # frame_start = 995
-    # frame_end = 6415
-    
-    # # 何フレームごとに処理を行うか 
-    # frame_skip = 1
-    
-    # video_path = 'D:\splatoon_movie\PremiereLeague\DAY3\\' + match + '.avi'
-    # video_name, video_ext = os.path.splitext(os.path.basename(video_path))
-    
-    # csv_path = video_name + '_count.csv'
-
-
-    # read_list = csvread.csvread(csv_path, 's')
-    
-    # count_list = []
-    # for i in range(1, len(read_list)):
-    #     count = int(read_list[i][3])
-    #     count_list.append(count)
-        
-    # cor_count_list_yel = correctCount(count_list)
-    
-    # count_list = []
-    # for i in range(1, len(read_list)):
-    #     count = int(read_list[i][4])
-    #     count_list.append(count)
-        
-    # cor_count_list_blu = correctCount(count_list)
-
-
-    # # 記録用のリスト    
-    # list_top = ['fcount']
-    # # カウント
-    # list_top.append('rain_ctrl')
-    # list_top.append('loc_ratio')
-    # list_top.append('cor_count_yel')
-    # list_top.append('cor_count_blu')
-    
-    # record_list = [list_top]
-    
-    # for i in range(1, len(read_list)):
-    #     fcount = read_list[i][0]
-    #     rain_ctrl = read_list[i][1]
-    #     loc_ratio = read_list[i][2] 
-    #     cor_count_yel = cor_count_list_yel[i-1]
-    #     cor_count_blu = cor_count_list_blu[i-1]        
-
-    #     record_list.append([fcount, rain_ctrl, loc_ratio, cor_count_yel, cor_count_blu])
-        
-
-    
-    
-    # # CSV出力
-    # out_path = video_name + '_count_cor.csv'
-    # with open(out_path, 'w') as file:
-    #     writer = csv.writer(file, lineterminator='\n')
-    #     writer.writerows(record_list)
-
-    
-    match = 'PL-DAY4_2-2'
-    
-    frame_start = 1019
-    frame_end = 19024
-
-    # 何フレームごとに処理を行うか 
-    frame_skip = 1
-    
-    video_path = 'D:\splatoon_movie\PremiereLeague\DAY4\\' + match + '.avi'
-    video_name, video_ext = os.path.splitext(os.path.basename(video_path))
-    
-    csv_path = video_name + '_count.csv'
-
-
-    video = cv2.VideoCapture(video_path)
-    W = video.get(cv2.CAP_PROP_FRAME_WIDTH)
-    H = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    
-    # 以下フレーム処理結果の準備
-    # 記録用のリスト    
-    list_top = ['fcount']
-    # ガチホコの確保状況と位置
-    list_top.append('rain_ctrl')
-    list_top.append('loc_ratio')    
-    # カウント
-    list_top.append('y_count')
-    list_top.append('b_count')
-
-    count_list = [list_top]
-
-    
-    # 動画処理
-    fcount = 0
-    while(video.isOpened()):
-        ret, frame = video.read()
-    
-        if not ret:
-            break
-      
-        fcount += 1  
-            
-        if frame_start <= fcount < frame_end:
-            if (fcount- frame_start) % frame_skip == 0:              
-                # フレームに対しての処理
-                # ガチホコの確保状況と位置
-                rain_ctrl, loc_ratio = getLocation(frame)   
-                # カウント
-                count = getCount(frame)
-                # 出力リストに記録
-                count_list.append([fcount, rain_ctrl, loc_ratio] + count)
-                
-                                
-        if fcount == frame_end:
-            break
-                
-    video.release
-
-    # CSV出力
-    with open(csv_path, 'w') as file:
-        writer = csv.writer(file, lineterminator='\n')
-        writer.writerows(count_list)
-         
-    
-    
     
         
 if __name__ == "__main__":

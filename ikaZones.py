@@ -1,10 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-import csv
-import os
-import csvread
-import os.path
 import numpy as np
 
                 
@@ -231,7 +227,7 @@ def getPenaltyCount(frame):
     ''' ペナルティカウント取得 '''
     H, W = frame.shape[:2]
 
-    # ペナルティカウントがあるか
+    # ペナルティカウントの有無の判別
     pena_list = [0, 0]
     scale_list = [0, 0]
     for i in [0, 1]:
@@ -373,7 +369,7 @@ def getPenaltyCount(frame):
             count_list[i] = count
 
 
-    return pena_list + count_list
+    return pena_list, count_list
 
 
 
@@ -438,7 +434,7 @@ def getRatio(frame, zones_num):
 
 
 
-def correctCount(count_list):
+def correctCountList(count_list):
     ''' カウントを補正 '''
     # カウントは前のフレームと変わらないか1減るかのどちらか
     cor_count_list = [100]
@@ -461,88 +457,19 @@ def correctCount(count_list):
     
 
 
-def checkVideo(video_path, frame_start, frame_end, zones_num, out_path):
-    ''' 動画のカウント取得 '''
-    video = cv2.VideoCapture(video_path)
-    W = video.get(cv2.CAP_PROP_FRAME_WIDTH)
-    H = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    
-    frame_skip = 1
-
-    # 以下フレーム処理結果の準備
-    # 記録用のリスト    
-    list_top = ['fcount']
-    # カウント
-    list_top.append('y_count')
-    list_top.append('b_count')
-      # カウント
-    list_top.append('pena_y')
-    list_top.append('pena_b')
-    # カウント
-    list_top.append('pena_count_y')
-    list_top.append('pena_count_b')
-    
-    # 塗り割合
-    for i in range(zones_num):
-        list_top.append('y_ratio_' + str(i+1))
-        list_top.append('b_ratio_' + str(i+1))
-        
-    count_list = [list_top]
-
-    
-    # 動画処理
-    fcount = 0
-    while(video.isOpened()):
-        ret, frame = video.read()
-    
-        if not ret:
-            break
-      
-        fcount += 1  
-            
-        if frame_start <= fcount < frame_end:
-            if (fcount- frame_start) % frame_skip == 0:              
-                # フレームに対しての処理
-                # カウント
-                zones_ctrl = getControlTeam(frame)
-                count = getCount(frame, zones_ctrl)
-                # count = [0, 0]
-                
-                pena_count = getPenaltyCount(frame)
-                
-                # 塗り割合
-                zones_ratio = getRatio(frame, zones_num)
-          
-                # 出力リストに記録
-                count_list.append([fcount] + count + pena_count + zones_ratio)
-                
-                
-                                
-        if fcount == frame_end:
-            break
-                
-    video.release
-
-    # CSV出力
-    with open(out_path, 'w') as file:
-        writer = csv.writer(file, lineterminator='\n')
-        writer.writerows(count_list)    
-    
-
-
 
 def main():
     ''' メイン処理 ''' 
-    for i in range(31, 32):
+    # for i in range(31, 32):
         
-        img_path = '.\\sample_images\\sample_zones_' + str(i) + '.png'
-        frame = cv2.imread(img_path) 
+    #     img_path = '.\\sample_images\\sample_zones_' + str(i) + '.png'
+    #     frame = cv2.imread(img_path) 
         
-        print('====================================')
-        print(img_path)        
-        pena_count = getPenaltyCount(frame)
+    #     print('====================================')
+    #     print(img_path)        
+    #     pena_count = getPenaltyCount(frame)
         
-        print(pena_count)
+    #     print(pena_count)
 
         # zones_ctrl = getControlTeam(frame)
         # count_list = getCount(frame, zones_ctrl)
@@ -553,93 +480,11 @@ def main():
         # zones_ratio = zonesRatio(frame, zones_num)
         # print(zones_ratio)
     
-        cv2.imshow('Preview', frame)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()    
+        # cv2.imshow('Preview', frame)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()    
     
 
-    
-
-    match_list = [[3, '3-2'],
-                  [3, '2-2']]
-
-
-    match_list = [[]]
-
-    for day, match in match_list:
-        video_path = 'D:\splatoon_movie\PremiereLeague\\\DAY' + str(day) + '\\PL-DAY' + str(day) + '_' + match + '.avi'  
-   
-        video_name, video_ext = os.path.splitext(os.path.basename(video_path))
-        video_dir = os.path.dirname(video_path)    
-
-        status_path = video_dir + '\\' + video_name + '_status.csv'
-        status_list = csvread.csvread(status_path, 's')
-        frame_start = int(status_list[1][4])
-        frame_end   = int(status_list[1][5])
-        
-        zones_num = 1
-      
-        csv_path = video_dir + '\\' + video_name + '_count.csv'
-        
-        checkVideo(video_path, frame_start, frame_end, zones_num, csv_path) 
-
-
-        
-        # 以下リストの修正
-        read_list = csvread.csvread(csv_path, 's')
-    
-        count_list = []
-        for i in range(1, len(read_list)):
-            count = int(read_list[i][1])
-            count_list.append(count)
-            
-        cor_count_list_yel = correctCount(count_list)
-        
-        count_list = []
-        for i in range(1, len(read_list)):
-            count = int(read_list[i][2])
-            count_list.append(count)
-            
-        cor_count_list_blu = correctCount(count_list)
-    
-    
-        # 記録用のリスト    
-        list_top = ['fcount']
-        # カウント
-        list_top.append('cor_count_yel')
-        list_top.append('cor_count_blu')
-        # 塗り割合
-        for i in range(zones_num):
-            list_top.append('ratio_' + str(i+1) + '_yel')
-            list_top.append('ratio_' + str(i+1) + '_blu')
-        
-        record_list = [list_top]
-        
-        for i in range(1, len(read_list)):
-            fcount = read_list[i][0]
-            cor_count_yel = cor_count_list_yel[i-1]
-            cor_count_blu = cor_count_list_blu[i-1]
-            ratio_yel = read_list[i][3]
-            ratio_blu = read_list[i][4] 
-            
-            record_list.append([fcount, cor_count_yel, cor_count_blu, ratio_yel, ratio_blu])
-            
-        
-        # CSV出力
-        out_path = video_name + '_count_cor.csv'
-        with open(out_path, 'w') as file:
-            writer = csv.writer(file, lineterminator='\n')
-            writer.writerows(record_list)
-        
-        
-    
-
-
-    
-            
-    
-    
-    
         
 if __name__ == "__main__":
     main()

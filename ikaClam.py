@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-import csv
-import os
-import csvread
-import os.path
 import numpy as np
 
-                
+
+'''
+カウント表示がガチエリアと共通の部分が多いため
+画像認識のためのオブジェクトが流用できます。
+そのため一部zonesの文字が紛れてますが
+問題なく動作します。
+
+異なる点
+カウント表示位置
+アサリの数の表示
+'''          
+
+      
 # 要素の位置の座標（画面サイズに可変で対応するために比率で設定）
 # カウント表示
 TL_count_ratio = [(804/1920, 150/1080), (1026/1920, 150/1080)]
@@ -375,7 +383,7 @@ def getPenaltyCount(frame):
             count_list[i] = count
 
 
-    return pena_list + count_list
+    return pena_list, count_list
 
 
 
@@ -531,74 +539,6 @@ def countAllClam(count_list):
     
 
 
-
-def video(video_path, frame_start, frame_end, out_path):
-    ''' 動画で処理を行う '''
-    # 何フレームごとに処理を行うか 
-    frame_skip = 1
-    
-    video = cv2.VideoCapture(video_path)
-    W = video.get(cv2.CAP_PROP_FRAME_WIDTH)
-    H = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    
-    # 以下フレーム処理結果の準備
-    # 記録用のリスト    
-    list_top = ['fcount']
-    # ゴールの状況
-    list_top.append('clam_ctrl')
-    # カウント
-    list_top.append('count_y')
-    list_top.append('count_b')
-    # ペナルティカウントがついているか
-    list_top.append('pena_y')
-    list_top.append('pena_b')
-    # ペナルティカウント
-    list_top.append('pena_count_y')
-    list_top.append('pena_count_b')
-    # アサリの数
-    list_top.append('clam_num_y')
-    list_top.append('clam_num_b')
-        
-    record_list = [list_top]
-
-    
-    # 動画処理
-    fcount = 0
-    while(video.isOpened()):
-        ret, frame = video.read()
-    
-        if not ret:
-            break
-      
-        fcount += 1  
-            
-        if frame_start <= fcount < frame_end:
-            if (fcount- frame_start) % frame_skip == 0:              
-                # フレームに対しての処理
-                # カウント
-                clam_ctrl = getControlTeam(frame)
-                count = getCount(frame, clam_ctrl)
-                
-                # ペナルティカウント
-                pena_count = getPenaltyCount(frame)
-                
-                # アサリの数
-                clam_count = getClamNumber(frame)  
-          
-                # 出力リストに記録
-                record_list.append([fcount, clam_ctrl] + count + pena_count + clam_count)
-                
-                                
-        if fcount == frame_end:
-            break
-                
-    video.release
-
-    # CSV出力
-    with open(out_path, 'w') as file:
-        writer = csv.writer(file, lineterminator='\n')
-        writer.writerows(record_list)  
-        
     
     
 def main():
@@ -628,80 +568,7 @@ def main():
     #     cv2.destroyAllWindows()    
     
 
-    video_path = 'D:\splatoon_movie\PremiereLeague\\\DAY4\\PL-DAY4_2-3.avi'         
-    video_name, video_ext = os.path.splitext(os.path.basename(video_path))
-    video_dir = os.path.dirname(video_path) 
-    
-    csv_path = video_dir + '\\' + video_name + '_count.csv'
 
-
-    read_list = csvread.csvread(csv_path, 's')
-
-
-
-    for i in range(2):
-        count_list = []
-        for j in range(1, len(read_list)):
-            count = int(read_list[j][i+8])
-            count_list.append(count)
-            
-        all_clam = countAllClam(count_list)
-        
-        print(all_clam)
-
-    # # 記録用のリスト    
-    # list_top = ['fcount']
-    # # カウント
-    # list_top.append('cor_count_yel')
-    # list_top.append('cor_count_blu')
-    # # 塗り割合
-    # for i in range(zones_num):
-    #     list_top.append('ratio_' + str(i+1) + '_yel')
-    #     list_top.append('ratio_' + str(i+1) + '_blu')
-    
-    # record_list = [list_top]
-    
-    # for i in range(1, len(read_list)):
-    #     fcount = read_list[i][0]
-    #     cor_count_yel = cor_count_list_yel[i-1]
-    #     cor_count_blu = cor_count_list_blu[i-1]
-    #     ratio_yel = read_list[i][3]
-    #     ratio_blu = read_list[i][4] 
-        
-    #     record_list.append([fcount, cor_count_yel, cor_count_blu, ratio_yel, ratio_blu])
-        
-        
-    
-    
-    # # CSV出力
-    # out_path = video_name + '_count_cor.csv'
-    # with open(out_path, 'w') as file:
-    #     writer = csv.writer(file, lineterminator='\n')
-    #     writer.writerows(record_list)
-        
-        
-    
-    match_list = [[3, '3-2'],
-                  [3, '2-2']]
-
-    match_list = [[4, '2-3']]
-
-    for day, match in match_list:
-        video_path = 'D:\splatoon_movie\PremiereLeague\\\DAY' + str(day) + '\\PL-DAY' + str(day) + '_' + match + '.avi'  
-   
-        video_name, video_ext = os.path.splitext(os.path.basename(video_path))
-        video_dir = os.path.dirname(video_path)    
-
-        status_path = video_dir + '\\' + video_name + '_status.csv'
-        status_list = csvread.csvread(status_path, 's')
-        frame_start = int(status_list[1][4])
-        frame_end   = int(status_list[1][5])
-        
-      
-        out_path = video_dir + '\\' + video_name + '_count.csv'
-        
-        # video(video_path, frame_start, frame_end, out_path)    
-    
         
 if __name__ == "__main__":
     main()

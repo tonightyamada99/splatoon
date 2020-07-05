@@ -1,9 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-import csv
-import os
-import os.path
 import numpy as np
 
                 
@@ -250,71 +247,7 @@ def main():
     
 
 
-    
-    match = 'PL-DAY4_2-1'
-    
-    frame_start = 532
-    frame_end = 20114
-
-    # 何フレームごとに処理を行うか 
-    frame_skip = 1
-    
-    video_path = 'D:\splatoon_movie\PremiereLeague\DAY4\\' + match + '.avi'
-    video_name, video_ext = os.path.splitext(os.path.basename(video_path))
-    
-    csv_path = video_name + '_count.csv'
-
-
-    video = cv2.VideoCapture(video_path)
-    W = video.get(cv2.CAP_PROP_FRAME_WIDTH)
-    H = video.get(cv2.CAP_PROP_FRAME_HEIGHT)
-    
-    # 以下フレーム処理結果の準備
-    # 記録用のリスト    
-    list_top = ['fcount']
-    # ガチヤグラの確保状況と位置
-    list_top.append('tower_ctrl')
-    list_top.append('loc_ratio')    
-    # カウント
-    list_top.append('y_count')
-    list_top.append('b_count')
-
-    count_list = [list_top]
-
-    
-    # 動画処理
-    fcount = 0
-    while(video.isOpened()):
-        ret, frame = video.read()
-    
-        if not ret:
-            break
-      
-        fcount += 1  
-            
-        if frame_start <= fcount < frame_end:
-            if (fcount- frame_start) % frame_skip == 0:              
-                # フレームに対しての処理
-                # ガチヤグラの確保状況と位置
-                tower_ctrl, loc_ratio = getLocation(frame)   
-                # カウント
-                count = getCount(frame)
-                # 出力リストに記録
-                count_list.append([fcount, tower_ctrl, loc_ratio] + count)
-                
-                                
-        if fcount == frame_end:
-            break
-                
-    video.release
-
-    # CSV出力
-    with open(csv_path, 'w') as file:
-        writer = csv.writer(file, lineterminator='\n')
-        writer.writerows(count_list)
-         
-    
-    
+  
     
         
 if __name__ == "__main__":
