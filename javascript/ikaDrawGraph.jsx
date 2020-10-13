@@ -13,13 +13,8 @@ JavaScript for Illustrator
 *************************************************/
 
 ////////// 各種設定 ////////////////////////////////////////////////////
-// 軸線の色
+// 色
 var colorScale = [128, 128, 128];
-
-// フォント
-var fontScale = 'RowdyStd-EB';
-var fontSizeScale = 28;
-var colorTextScale = [255, 255, 255];
 
 var colorGraph = [255, 0, 255];
 var colorYellow = [251, 176, 59];
@@ -30,40 +25,103 @@ var colorY = [255, 255, 0];
 var colorC = [0, 255, 255];
 var colorBack = [colorYellow, colorBlue];
 
-// グラフ軸線の太さ
+// グラフ線の太さ
+var lineWidthGraph = 5;
 var lineWidthAxis = 3;
 var lineWidthScale = 1;
+
+// フォント
+var fontNameGraph = 'RowdyStd-EB';
+var fontObjTitle = getfont(fontNameGraph);
+var fontObjScale = getfont(fontNameGraph);
+var fontSizeTitlle = 60;
+var fontSizeScale = 24;
+var colorText = [255, 255, 255];
 
 // アサリの数の目盛線間隔
 var yScaleClam = 5;
 
+
 //////////////////////////////////////////////////////////////
 /* メイン処理 */
-// CSVファイルを開く
-var fileObj = File.openDialog("CSVファイルを指定してください", '*.csv');
 
-var flagFile = false;
-// CSVファイルが指定されたか
-if ( !fileObj ){ 
-    alert( makeMessage( "noFile" ) );
+/********** オブジェクト関連 **********/
+var flagObj = false;
+
+// グラフタイトルとグラフエリアを取得
+var docObj = app.activeDocument;
+var selObj = docObj.selection;
+
+// オブジェクトを選択しているか
+if ( selObj.length == 0 ){ 
+    alert( "オブジェクトを選択していません" );
 }else{
     // ステータス・カウントファイルを読み込む
-    var returnList = readFiles(fileObj);
+    var returnObj = setDrawTarget(selObj);
 
-    // ファイルを読み込めたかどうか
-    if ( returnList ){
-        var statusList = returnList[0];
-        var countList  = returnList[1];
+    // オブジェクトを正しく設定出来ているか
+    if ( returnObj ){
+        graphAreaObj = returnObj[0];
+        titleObj = returnObj[1];
 
-        // データのルールとfps
-        var rule = statusList[1][0];
-        var fps  = statusList[1][3];
+        // グラフエリアは線・塗り無しに
+        graphAreaObj.filled = false;
+        graphAreaObj.stroked = false;
 
-        flagFile = true;
+        // グラフエリア（長方形）のサイズ取得
+        var geo = graphAreaObj.geometricBounds;
+        var areaLeft   = geo[0];
+        var areaTop    = geo[1];
+        var areaRight  = geo[2];
+        var areaBottom = geo[3];
+
+        // グラフ本体の左上座標と大きさを決定
+        var xOrigin = areaLeft + fontSizeScale * 2.5;
+        var yOrigin = areaTop - fontSizeScale * 0.5;    // y座標はマイナス
+        var pointOrigin = [xOrigin, yOrigin];
+        var widthGraph = areaRight - areaLeft - fontSizeScale * 4;
+        var heightGraph = areaTop - areaBottom - fontSizeScale * 2;
+
+        // フラグをオンに
+        flagObj = true;
     }
 }
 
+
+/********** ファイル関連 **********/
+var flagFile = false;
+
+// オブジェクトを設定したかどうか
+if ( flagObj ){
+    // CSVファイルを開く
+    var fileObj = File.openDialog("CSVファイルを指定してください", '*.csv');
+
+    // CSVファイルが指定されたか
+    if ( !fileObj ){ 
+        alert( makeMessage( "noFile" ) );
+    }else{
+        // ステータス・カウントファイルを読み込む
+        var returnList = readFiles(fileObj);
+
+        // ファイルを読み込めたかどうか
+        if ( returnList ){
+            var statusList = returnList[0];
+            var countList  = returnList[1];
+
+            // データのルールとfps
+            var rule = statusList[1][0];
+            var fps  = statusList[1][3];
+
+            // フラグをオンに
+            flagFile = true;
+        }
+    }
+}
+
+
+/********** 設定ダイアログ関連 **********/
 var flagDialog = false;
+
 // ファイルを正しく読み込めたか
 if (flagFile) {
     makeDialogSetting(rule);
@@ -72,8 +130,70 @@ if (flagFile) {
 
 
 
-
 //////////////////////////////////////////////////////////////
+/* 選択オブジェクトからグラフ・タイトルオブジェクトを設定する */
+function setDrawTarget(selObj) {
+    var graphAreaObj, titleObj;
+    var len = selObj.length;
+
+    // オブジェクト1つずつの種類を取得して場合分け
+    var maxWidthSelObj = 0;
+    for (var index=0; index<len; index++){
+        selObj[index].selected = false;
+        objType = selObj[index].typename;
+
+        // テキスト・パスオブジェクトを選別
+        switch (objType) {
+            case "PathItem":
+                selObj[index].selected = false;
+                var bounds = selObj[index].geometricBounds;
+                var widthSelObj = bounds[2] - bounds[0]; 
+
+                // パスの中でも最大のものをグラフエリアに決定
+                if (widthSelObj > maxWidthSelObj){
+                    graphAreaObj = selObj[index];
+                    maxWidthSelObj = widthSelObj;
+                }
+                break;
+
+            case "TextFrame":
+                titleObj = selObj[index];
+                break;
+            
+            default:
+                break;
+        }
+    }
+
+    // オブジェクトを設定できているか
+    if ( !graphAreaObj && !titleObj ){
+        alert( "選択したオジェクトにパスと文字が含まれていません。");
+
+    }else if ( !graphAreaObj && titleObj ){
+        titleObj.selected = true;
+        alert( "選択したオジェクトにパスが含まれていません。");
+
+    }else if ( graphAreaObj && !titleObj ){
+        alert( "選択したオジェクトにタイトルが含まれていません。\nタイトルオブジェクトを作成します。");  
+
+        var bounds = graphAreaObj.geometricBounds;
+        var xTitle = (bounds[2] + bounds[0]) / 2;
+        var yTitle = bounds[3] - fontSizeTitlle *1.5;
+        titleObj = putText('グラフタイトル', [xTitle, yTitle], fontObjTitle, fontSizeTitlle, colorText);
+        titleObj.textRange.justification = Justification.CENTER;
+    
+        titleObj.selected = true;
+        graphAreaObj.selected = true;
+        return [graphAreaObj, titleObj];
+
+    }else{
+        titleObj.selected = true;
+        graphAreaObj.selected = true;
+        return [graphAreaObj, titleObj];
+    }
+}
+
+
 /* ステータス・カウントファイルを読み込む */
 function readFiles(fileObj) {
     // 指定したファイルの種類を判別する
@@ -119,72 +239,7 @@ function readFiles(fileObj) {
 
 
 
-/*
-// グラフタイトルとグラフエリアを取得
-var docObj = app.activeDocument;
-var selObj = docObj.selection;
-var len = selObj.length;
 
-var maxWidthSelObj = 0;
-for (var index=0; index<len; index++){
-  selObj[index].selected = false;
-  objType = selObj[index].typename;
-
-  switch (objType) {
-    case "TextFrame":
-        titleObj = selObj[index];
-        
-      break;
-
-    case "PathItem":
-        selObj[index].selected = false;
-        var bounds = selObj[index].geometricBounds;
-        var widthSelObj = bounds[2] - bounds[0]; 
-
-        if (widthSelObj > maxWidthSelObj){
-          graphAreaObj = selObj[index];
-          maxWidthSelObj = widthSelObj;
-        }
-
-      break;
-
-    default:
-      break;
-  }
-}
-
-titleObj.selected = true;
-graphAreaObj.selected = true;
-
-// グラフ描画エリア（長方形）のサイズ取得
-graphAreaObj.filled = false;
-graphAreaObj.stroked = false;
-
-var geo = graphAreaObj.geometricBounds;
-var areaLeft   = geo[0];
-var areaTop    = geo[1];
-var areaRight  = geo[2];
-var areaBottom = geo[3];
-
-// グラフ本体の左上座標と大きさを決定
-var xOrigin = areaLeft + fontSizeScale * 2.5;
-var yOrigin = areaTop - fontSizeScale * 0.5;    // y座標はマイナス
-var pointOrigin = [xOrigin, yOrigin];
-var widthGraph = areaRight - areaLeft - fontSizeScale * 4;
-var heightGraph = areaTop - areaBottom - fontSizeScale * 2;
-*/
-/*
-┌────────────────────────────────────────────────────┐
-│       ┌──────────────────────────────────────────┐ │
-│       │                                          │ │ 
-│       │                                          │ │
-│       │                                          │ │
-│       │                                          │ │
-│       │                                          │ │
-│       └──────────────────────────────────────────┘ │   
-│                                                    │  
-└────────────────────────────────────────────────────┘ 
-*/
 /*
 switch (ddnObj.selection.index) {
     case 0:
@@ -405,14 +460,14 @@ function drawScale(scaleType, maxClamNum) {
         drawLine(ptlist, colorScale, lineWidth);
         // 目盛数字の描画
         var text = yScaleList[i][2];
-        var txtObj = putText(text, [-fontSizeScale*0.5, y-fontSizeScale*0.5], fontScale, fontSizeScale,  colorTextScale);
+        var txtObj = putText(text, [-fontSizeScale*0.5, y-fontSizeScale*0.5], fontScale, fontSizeScale,  colorText);
         txtObj.textRange.justification = Justification.RIGHT;
     }
 
     // 垂直方向の線
     // 縦軸
     drawLine([[0, 0], [0, -heightGraph]], colorScale, lineWidthAxis);
-    txtStart = putText('START', [0, -heightGraph - fontSizeScale*1.5], fontScale, fontSizeScale, colorTextScale);
+    txtStart = putText('START', [0, -heightGraph - fontSizeScale*1.5], fontScale, fontSizeScale, colorText);
     txtStart.textRange.justification = Justification.CENTER;
     
     // 縦軸の目盛り線
@@ -424,12 +479,12 @@ function drawScale(scaleType, maxClamNum) {
         var ptlist = [[x, 0], [x, -heightGraph]];
         drawLine(ptlist, colorScale, lineWidthScale);
         var text = i + ':00'
-        txtObj = putText(text, [x, -heightGraph - fontSizeScale*1.5], fontScale, fontSizeScale, colorTextScale);
+        txtObj = putText(text, [x, -heightGraph - fontSizeScale*1.5], fontScale, fontSizeScale, colorText);
         txtObj.textRange.justification = Justification.CENTER;
     }
 
     drawLine([[widthGraph, 0], [widthGraph, -heightGraph]], colorScale, 1);
-    txtObj = putText('FINISH', [widthGraph, -heightGraph - fontSizeScale*1.5], fontScale, fontSizeScale, colorTextScale);
+    txtObj = putText('FINISH', [widthGraph, -heightGraph - fontSizeScale*1.5], fontScale, fontSizeScale, colorText);
     txtObj.textRange.justification = Justification.CENTER;
     
 }
@@ -810,50 +865,55 @@ function drawRectangle(TL, BR, colorLine, colorFill){
     return rectObj;
 }
 
+
+/* フォントオブジェクト取得 */
+function getfont(fontName) {
+    try{ 
+        var fontObj = app.textFonts.getByName(fontName);
+        return fontObj;
+    }catch(e){ 
+        alert( fontName + makeMessage("noFont") );
+        return null;
+    } 
+}
+
 /* テキストを配置する */
-function putText(text, point, font, fontSize, color){
+function putText(text, position, fontObj, fontSize, color){
     var txtObj = app.activeDocument.textFrames.add();
     // 文字内容
     txtObj.contents = text;
     // 文字位置
-    txtObj.translate(point[0], point[1]);
-    // フォント検索 -> 見つかれば変更
-    try{
-        getFont = app.textFonts.getByName(font);
-        txtObj.textRange.textFont = getFont;
-    } 	
-    catch(e)
-	{
-		$.writeln ( "error linObj:" + e.linObj + " - " + e.message );
-    }  
+    txtObj.translate(position[0], position[1]);
+    // フォント変更
+    if (fontObj){ txtObj.textRange.textFont = fontObj; }
     // 文字サイズ
     txtObj.textRange.size = fontSize;
     // 文字色
     txtObj.textRange.characterAttributes.fillColor = setColor(color);
-
     // 文字ヅメ
     txtObj.textRange.kerning = -50;
 
     // グラフの左上座標まで移動
-    txtObj.translate(pointOrigin[0], pointOrigin[1]);
+    // txtObj.translate(pointOrigin[0], pointOrigin[1]);
 
     redraw();
     return txtObj;
 }
 
 
+
 ////////////////////////////////////////////////////////////////////////
 // メッセージ
 function makeMessage( msgType ) {
     switch( msgType ){
-        case "pref" : mA = [
-                "■ハガキ宛名支援・設定用テキスト■",
-                "rowSplitedFileName:rowSplited.txt	←読み込むデータのファイル名（拡張子つき・半角英数字）",
-                "sheetNum:1	←印刷する枚数" ] ; 
-                break ;
-
         case "noFile":
             msg = "ファイルが指定されませんでした。\nスクリプトを終了します。";
+            break;
+
+        case "cancel":
+            msg = "キャンセルしました。\nスクリプトを終了します。"
+        case "noFont":
+            msg = " : フォントが見つかりませんでした";
             break;
 
         case "err1":
