@@ -1,34 +1,61 @@
 # -*- coding: utf-8 -*-
 
-
 import csv
+    
 
-def csvread(csv_path, out_type):
-    ''' CSVファイルを型を指定して読み込む '''
-    f = open(csv_path, 'r')
-    reader = csv.reader(f)
-    csvdata = [ e for e in reader ]
-    f.close()
-    
-    if out_type == 'string' or out_type == 'str' or out_type == 's':
-        return csvdata
-    
-    elif out_type == 'float' or out_type == 'f':
-        list_length = len(csvdata)
-        csv_list = [[] for j in range(list_length)]
-        for i in range(list_length):
-            csv_list[i] = [float(s) for s in csvdata[i]]
-            
-        return csv_list
+def csvread(csv_path):
+    ''' カンマ区切りCSVファイルを読み込んでリストで返す '''    
+    with open(csv_path, 'r') as f:
+        reader = csv.reader(f)
+        csv_list = [ row for row in reader ]
 
-    elif out_type == 'integer' or out_type == 'int' or out_type == 'i':
-        list_length = len(csvdata)
-        csv_list = [[] for j in range(list_length)]
-        for i in range(list_length):
-            csv_list[i] = [int(float(s)) for s in csvdata[i]]
-            
-        return csv_list
+    return_list = []
+    # 各行について
+    for row in csv_list:
+        new_row = []
     
-    else:
-        print('Enter "out_type" in "string", "float" or "integer".')
-        return None
+        # 行の各要素について
+        for e in row:
+            # float型に変換できるか
+            try:
+                float(e)
+            except:
+                # 変換できなかったら文字列
+                # str型で格納
+                new_row.append(e)
+                
+            # 変換できたら数字
+            else:
+                # 整数かどうか -> 文字列について小数点"."の有無で判別する
+                if e.isdigit():
+                    # int型で格納
+                    new_row.append(int(float(e)))
+                else:
+                    # float型で格納
+                    new_row.append(float(e))
+        
+        return_list.append(new_row)
+        
+        
+    return return_list
+
+
+
+
+def test():
+    ''' 実行テスト '''
+    csv_path = 'testCSV.csv'
+    csv_list = csvread(csv_path)
+    
+    for row in csv_list:
+        print(row)
+
+        
+if __name__ == "__main__":
+    test()
+
+    
+
+
+            
+        
