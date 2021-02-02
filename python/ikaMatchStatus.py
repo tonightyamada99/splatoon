@@ -13,7 +13,6 @@ import ikaLamp
 import ikaRule
 import ikaStage
 import ikaStartEnd
-import ikaScreenStatus
 
 
 # 視点指定のウィンドウ関連
@@ -26,8 +25,10 @@ text_how =  'Viewpoint -> 0:俯瞰 1:主観 を選択\n'
 text_how += 'User Num  -> イカランプ位置を左から1～4で指定\n'
 text_how += '指定完了したらESCで終了'
 
+# フォント
 font_path = 'C:\\Users\\Yamada\\AppData\\Local\\Microsoft\\Windows\\Fonts\\Cica-Regular.ttf'
 
+# 処理状況メーターの長さ
 length_meter = 20
 
 
@@ -105,7 +106,7 @@ def getStatus(video_path):
     # 取得状況の把握
     if (os.path.exists(out_path)):
         print('情報取得済み')
-        status_list = csvread.csvread(out_path)
+        status_list = csvread.readAsList(out_path)
         
     else:
         # 動画読み込み
@@ -211,7 +212,7 @@ def getStatus(video_path):
         with open(out_path, 'w') as file:
             writer = csv.writer(file, lineterminator='\n')
             writer.writerows(status_list)  
-
+        
         
     return status_list
 
@@ -230,8 +231,8 @@ def main():
         status_list = getStatus(video_path)
         
         print('--------------------------------------------------')
-        for i in range(len(status_list[0])):
-            print(status_list[0][i], status_list[1][i])
+        for idx in range(len(status_list[0])):
+            print(status_list[0][idx], status_list[1][idx])
                     
         
     print('==================================================')

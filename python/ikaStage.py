@@ -22,23 +22,23 @@ def getStage(frame):
     r, b = BR_stage
     img_trm = frame[t:b, l:r]
     
+    # 白で2値化
+    bin_trm = cv2.inRange(img_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
+    
     # 一致率とステージナンバー
     val_stage = 0 
-    stage_num = 0
+    stage_num = 'nodata'
     
     # 23ステージ分
     for i in range(23):
         # ステージ名画像読み込み
-        img_stage = cv2.imread('.\\keyobject\\stage_name_' + str(i) + '.png')
-        bin_stage = cv2.inRange(img_stage, thd_rgb['wht'][0], thd_rgb['wht'][1])
+        bin_stage = cv2.imread('.\\pbm\\stage_name_' + str(i) + '.pbm', -1)
         
         # マスク処理
-        msk_trm = cv2.bitwise_and(img_trm, img_stage)
-        # RGB閾値で白黒に変換
-        bin_trm = cv2.inRange(msk_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
+        msk_trm = cv2.bitwise_and(bin_trm, bin_stage)
         
         # ステージ名画像との一致率を算出
-        jug = cv2.matchTemplate(bin_trm, bin_stage, cv2.TM_CCORR_NORMED)
+        jug = cv2.matchTemplate(msk_trm, bin_stage, cv2.TM_CCORR_NORMED)
         minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)
         
         # 一致率が最大となるステージを探す
@@ -61,7 +61,7 @@ def test():
     
     # ステージデータ
     import csvread
-    stage_list = csvread.csvread('stage.csv')
+    stage_list = csvread.readAsList('stage.csv')
     
     for i in range(len(stage_list)):
         if stage_num == stage_list[i][0]:
@@ -78,7 +78,6 @@ def test():
     cv2.waitKey(0)
     cv2.destroyAllWindows()
             
-
 
     
 if __name__ == "__main__":    

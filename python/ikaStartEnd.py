@@ -22,16 +22,13 @@ thd_val = 0.9
 thd_rgb = {'blk':[(  0,   0,   0), (128, 128, 128)],
            'wht':[(128, 128, 128), (255, 255, 255)]}
 
-# 各種比較画像
+# 比較画像
 # 試合開始ナワバリ
-img_259 = cv2.imread('.\\keyobject\\time_259.png')
-bin_259 = cv2.inRange(img_259, thd_rgb['wht'][0], thd_rgb['wht'][1])
+bin_259 = cv2.imread('.\\pbm\\time_259.pbm', -1)
 # 試合開始ガチルール
-img_459 = cv2.imread('.\\keyobject\\time_459.png')
-bin_459 = cv2.inRange(img_459, thd_rgb['wht'][0], thd_rgb['wht'][1])
+bin_459 = cv2.imread('.\\pbm\\time_459.pbm', -1)
 # 試合終了
-img_fin = cv2.imread('.\\keyobject\\time_fin.png')
-bin_fin = cv2.inRange(img_fin, thd_rgb['wht'][0], thd_rgb['wht'][1])
+bin_fin = cv2.imread('.\\pbm\\time_fin.pbm', -1)
     
 
 
@@ -83,7 +80,6 @@ def test():
     # jug = judgeEnd(frame)
     
     print(jug)
-    
 
     # プレビュー
     scale = 0.5
@@ -92,10 +88,9 @@ def test():
     cv2.imshow('Preview', img_rsz)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-            
-
 
     
+
 if __name__ == "__main__":    
     test()
  
