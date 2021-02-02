@@ -30,11 +30,9 @@ bin_los = cv2.imread('.\\pbm\\judge_lose.pbm', -1)
 
 def judgeJudge(frame):
     ''' ジャッジ画面の判定 '''     
-    # 勝敗表示位置の切り抜き
-    TL = TL_wol
-    BR = BR_wol
-    val_win = iip.matchRGB(bin_win, frame, TL, BR, 'wht')
-    val_los = iip.matchRGB(bin_los, frame, TL, BR, 'wht')
+    # win, lose両方の一致率を算出
+    val_win = iip.matchRGB(bin_win, frame, TL_wol, BR_wol, 'wht')
+    val_los = iip.matchRGB(bin_los, frame, TL_wol, BR_wol, 'wht')
         
     # 勝敗の一致率を比較
     if val_win > val_los:
@@ -57,9 +55,9 @@ def getJudge(frame, rule):
     ''' ジャッジ数字取得 '''
     # ナワバリバトル
     if rule == 'turf':
-        # 「%」画像
+        # 単位「%」画像
         bin_per = cv2.imread('.\\pbm\\judge_percent.pbm', -1)     
-        # 「p」画像
+        # 単位「p」画像
         bin_pnt = cv2.imread('.\\pbm\\judge_point_p.pbm', -1)     
 
         # 数字画像読み込み
@@ -89,7 +87,7 @@ def getJudge(frame, rule):
             BR = BR_pnt[i]
             point = iip.getNumber(frame, TL, BR, num_pnt, bin_pnt) 
             
-            # 結果を記録
+            # リストに記録
             judge_list[1][i  ] = percent
             judge_list[1][i+2] = point
         
@@ -133,7 +131,7 @@ def getJudge(frame, rule):
                 else:
                     point = 0
 
-            # 結果を記録
+            # リストに記録
             judge_list[1][i  ] = count
             judge_list[1][i+2] = point                    
             
