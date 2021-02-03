@@ -19,34 +19,56 @@ thd_hsv = {'blk':[(  0,   0,   0), (179,  64, 128)],    # 黒
            'wht':[(  0,   0, 128), (179,  64, 255)],    # 白
            'dng':[( 70,   0, 192), ( 90, 255, 255)],    # ピンチ danger
            'spw':[(  0,  16, 128), (179, 128, 255)],    # スペシャル状態 
-           'yel':[( 90, 128, 128), (100, 255, 255)],
-           'blu':[(165, 128, 128), (175, 255, 255)]}
+           'yel':[( 20, 128, 128), ( 30, 255, 255)],
+           'blu':[(125, 128, 128), (135, 255, 255)]}
 
 
 
-def matchRGB(template, image, TL, BR, threshold):
-    ''' 
-    RGB版：対象画像の指定箇所を切り抜いて比較画像との一致率を算出する
-    template    : 比較画像（二値画像）
-    image       : 対象画像
-    TL          : 切り取り左上座標
-    BR          : 切り取り右下座標
-    threshold   : 色閾値 [min, max] で指定  
-    '''        
-    # 対象の切り抜き
-    l, t = TL
-    r, b = BR
-    img_trm = image[t:b, l:r]
-
-    # 閾値を設定
+def convertThreshold(threshold, color_type='RGB'):
+    ''' 型を判別して入力を色閾値に変換 '''
+    # 出力変数
+    cvt_thd = None
+    
     # リスト形式
     if type(threshold) is list:
-        thd_min, thd_max = threshold
-    # 色指定
+        cvt_thd = threshold
+    # 文字列
     elif type(threshold) is str:
-        thd_min, thd_max = thd_rgb[threshold]  
+        # 色空間で場合分け
+        if color_type == 'RGB' or color_type == 'rgb':
+            cvt_thd = thd_rgb[threshold] 
+        elif color_type == 'HSV' or color_type == 'hsv':
+            cvt_thd = thd_hsv[threshold]
         
-    # 閾値で2値化
+
+    return cvt_thd
+
+
+
+def getMatchValue(template, image, pt1, pt2,
+                  threshold='wht', color_type='RGB'):
+    ''' 
+    対象画像の指定箇所を切り抜いて比較画像との一致率を算出する
+    template    : 比較画像（二値画像）
+    image       : 対象画像
+    pt1         : 切り取り左上座標
+    pt2         : 切り取り右下座標
+    threshold   : 色閾値 [min, max] で指定  
+    color_type  : 二値化する色空間をRGB/HSVで指定
+    '''    
+    # 閾値を取得
+    thd_min, thd_max = convertThreshold(threshold, color_type)    
+    
+    # 対象の切り抜き
+    left,  top    = pt1
+    right, bottom = pt2
+    img_trm = image[top:bottom, left:right]
+    
+    # BGR -> HSV
+    if color_type == 'HSV' or color_type == 'hsv':
+        img_trm = cv2.cvtColor(img_trm, cv2.COLOR_BGR2HSV)
+    
+    # 閾値で二値化
     bin_trm = cv2.inRange(img_trm, thd_min, thd_max)
         
     # 一致率の算出
@@ -58,65 +80,28 @@ def matchRGB(template, image, TL, BR, threshold):
 
 
 
-def matchHSV(template, image, TL, BR, threshold):
+def getMatchValueMask(template, image, pt1, pt2,
+                      threshold='wht', color_type='RGB'):
     ''' 
-    HSV版：対象画像の指定箇所を切り抜いて比較画像との一致率を算出する
+    対象画像の指定箇所を切り抜いてマスク処理した後で比較画像との一致率を算出する
     template    : 比較画像（二値画像）
     image       : 対象画像
-    TL          : 切り取り左上座標
-    BR          : 切り取り右下座標
-    threshold   : 色閾値 [min, max] で指定  
+    pt1         : 切り取り左上座標
+    pt2         : 切り取り右下座標
+    threshold   : 色閾値 [min, max] で指定 
+    color_type  : 二値化する色空間をRGB/HSVで指定
     '''        
-    # 対象の切り抜き
-    l, t = TL
-    r, b = BR
-    img_trm = image[t:b, l:r]
+    # 閾値を取得
+    thd_min, thd_max = convertThreshold(threshold, color_type)    
     
-    # RGB -> BGR -> HSV
-    bgr_trm = cv2.cvtColor(img_trm, cv2.COLOR_RGB2BGR)
-    hsv_trm = cv2.cvtColor(bgr_trm, cv2.COLOR_BGR2HSV)
-
-    # 閾値の設定
-    # リスト形式
-    if type(threshold) is list:
-        thd_min, thd_max = threshold
-    # 色指定
-    elif type(threshold) is str:
-        thd_min, thd_max = thd_hsv[threshold]
-        
-    # 閾値で2値化
-    bin_trm = cv2.inRange(hsv_trm, thd_min, thd_max)
-        
-    # 一致率の算出
-    jug = cv2.matchTemplate(bin_trm, template, cv2.TM_CCORR_NORMED)
-    minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)
-    
-
-    return maxVal
-
-
-
-def matchMaskRGB(template, image, TL, BR, threshold):
-    ''' 
-    RGB版：対象画像の指定箇所を切り抜いてマスク処理した後で比較画像との一致率を算出する
-    template    : 比較画像（二値画像）
-    image       : 対象画像
-    TL          : 切り取り左上座標
-    BR          : 切り取り右下座標
-    threshold   : 色閾値 [min, max] で指定  
-    '''        
     # 対象の切り抜き
-    l, t = TL
-    r, b = BR
-    img_trm = image[t:b, l:r]
-
-    # 閾値を設定
-    # リスト形式
-    if type(threshold) is list:
-        thd_min, thd_max = threshold
-    # 色指定
-    elif type(threshold) is str:
-        thd_min, thd_max = thd_rgb[threshold]  
+    left,  top    = pt1
+    right, bottom = pt2
+    img_trm = image[top:bottom, left:right] 
+    
+    # BGR -> HSV
+    if color_type == 'HSV' or color_type == 'hsv':
+        img_trm = cv2.cvtColor(img_trm, cv2.COLOR_BGR2HSV)
         
     # 閾値で2値化
     bin_trm = cv2.inRange(img_trm, thd_min, thd_max)
@@ -132,74 +117,31 @@ def matchMaskRGB(template, image, TL, BR, threshold):
 
 
 
-def matchMaskHSV(template, image, TL, BR, threshold):
-    ''' 
-    HSV版：対象画像の指定箇所を切り抜いてマスク処理した後で比較画像との一致率を算出する
-    template    : 比較画像（二値画像）
-    image       : 対象画像
-    TL          : 切り取り左上座標
-    BR          : 切り取り右下座標
-    threshold   : 色閾値 [min, max] で指定  
-    '''        
-    # 対象の切り抜き
-    l, t = TL
-    r, b = BR
-    img_trm = image[t:b, l:r]
-
-    # 閾値を設定
-    # リスト形式
-    if type(threshold) is list:
-        thd_min, thd_max = threshold
-    # 色指定
-    elif type(threshold) is str:
-        thd_min, thd_max = thd_hsv[threshold]  
-        
-    # RGB -> BGR -> HSV
-    bgr_trm = cv2.cvtColor(img_trm, cv2.COLOR_RGB2BGR)
-    hsv_trm = cv2.cvtColor(bgr_trm, cv2.COLOR_BGR2HSV)
-    
-    # 閾値で2値化
-    bin_trm = cv2.inRange(hsv_trm, thd_min, thd_max)
-    # マスク処理
-    msk_trm = cv2.bitwise_and(bin_trm, template) 
-        
-    # 一致率の算出
-    jug = cv2.matchTemplate(msk_trm, template, cv2.TM_CCORR_NORMED)
-    minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug) 
-    
-
-    return maxVal
-
-
-
-def getNumber(image, TL, BR, image_num, image_unit='nounit', threshold='wht'):
+def getNumber(image, pt1, pt2, image_num, 
+              image_unit='nounit', threshold='wht'):
     ''' 
     対象画像の指定箇所の数字を取得する
+    数字のみの認識となるため小数点は返り値を0.1倍などして対応する
     image       : 対象画像
-    TL          : 切り取り左上座標
-    BR          : 切り取り右下座標
+    pt1         : 切り取り左上座標
+    pt2         : 切り取り右下座標
     image_num   : 数字画像 [0~9]の順の二値画像リスト
     image_unit  : 単位画像 範囲に単位が含まれる場合は入力 
     threshold   : 色閾値 [min, max] で指定  
     '''    
+    # 閾値を取得
+    thd_min, thd_max = convertThreshold(threshold)  
+    
     # 数字の高さと幅の最大最小を取得
     h_list = [image_num[i].shape[0] for i in range(10)]
     w_list = [image_num[i].shape[1] for i in range(10)]
     h_max, h_min = max(h_list), min(h_list)
     w_max, w_min = max(w_list), min(w_list)
-    
-    # 閾値を設定
-    # リスト形式
-    if type(threshold) is list:
-        thd_min, thd_max = threshold
-    # 色指定
-    elif type(threshold) is str:
-        thd_min, thd_max = thd_rgb[threshold]  
-        
+         
     # 対象の切り抜き
-    l, t = TL
-    r, b = BR
-    img_trm = image[t:b, l:r]
+    left,  top    = pt1
+    right, bottom = pt2
+    img_trm = image[top:bottom, left:right] 
         
     # 閾値で2値化
     bin_trm = cv2.inRange(img_trm, thd_min, thd_max)
@@ -211,15 +153,15 @@ def getNumber(image, TL, BR, image_num, image_unit='nounit', threshold='wht'):
         minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)       
         
         # 単位より左側の数字部分を切り抜き
-        left_per = maxLoc[0]
-        bin_trm = bin_trm[:, 0:left_per]
+        left_unit = maxLoc[0]
+        bin_trm = bin_trm[:, 0:left_unit]
                     
     # ラベリング処理
     num_labels, label_image, stats, center = cv2.connectedComponentsWithStats(bin_trm)
     num_labels = num_labels - 1
     stats = np.delete(stats, 0, 0)
 
-    # 記録用リスト    
+    # 認識した数字の記録リスト    
     num_list = []
     
     for index in range(num_labels):
@@ -230,13 +172,13 @@ def getNumber(image, TL, BR, image_num, image_unit='nounit', threshold='wht'):
         
         # 高さが小さいものは小数点やノイズ
         if h > h_min*0.9: 
-            # 対象を切り取り target
+            # 対象を切り取り
             bin_tmp = bin_trm[y:y+h, x:x+w]
             
-            # 対象を黒画像に貼り付け
+            # 対象を黒画像に貼り付け target
+            # 数字ごとの大きさの違いに対応するため
             bin_tgt = np.zeros((h_max+2, w_max+2), dtype=np.uint8)
-            for i in range(h):
-                bin_tgt[1+i][1:1+w] = bin_tmp[i]
+            bin_tgt[1:1+h, 1:1+w] = bin_tmp
             
             # 対象の数字を判別する
             num_tgt = 0
@@ -252,6 +194,7 @@ def getNumber(image, TL, BR, image_num, image_unit='nounit', threshold='wht'):
                     num_tgt = num
                     val_tgt = maxVal
     
+            # リストに記録
             num_list.append([num_tgt, x])
             
             
@@ -259,6 +202,7 @@ def getNumber(image, TL, BR, image_num, image_unit='nounit', threshold='wht'):
     num_list.sort(key=lambda x: x[1], reverse=True) 
 
     # ソートしたリストを数字に変換
+    # 桁の小さい順に並んでいるので(数字)×10^(インデックス)で変換できる
     number = 0
     for i, [num, x] in enumerate(num_list):
         place = 10 ** i     # 桁:place
@@ -276,12 +220,12 @@ def test():
     img_path = '.\\capture_image\\image_sub_zones_1.png'
     frame = cv2.imread(img_path)
     
-    tmp_path = '.\\pbm\\keyobject\\sign_nice.pbm'
+    tmp_path = '.\\pbm\\sign_nice.pbm'
     bin_tmp = cv2.imread(tmp_path, -1)
     
     TL = ( 68, 1016)
     BR = (132, 1048)
-    val_rule = matchMaskRGB(bin_tmp, frame, TL, BR, 'wht')
+    val_rule = getMatchValueMask(bin_tmp, frame, TL, BR)
     
     print(val_rule)
 
