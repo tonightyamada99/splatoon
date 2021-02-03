@@ -26,14 +26,11 @@ thd_hsv = {'blk':[(  0,   0,   0), (179,  64, 128)],    # 黒
 
 def convertThreshold(threshold, color_type='RGB'):
     ''' 型を判別して入力を色閾値に変換 '''
-    # 出力変数
-    cvt_thd = None
+    # list型 -> そのまま返す
+    cvt_thd = threshold
     
-    # リスト形式
-    if type(threshold) is list:
-        cvt_thd = threshold
-    # 文字列
-    elif type(threshold) is str:
+    # string型 -> 閾値取り出し
+    if type(threshold) is str:
         # 色空間で場合分け
         if color_type == 'RGB' or color_type == 'rgb':
             cvt_thd = thd_rgb[threshold] 
@@ -70,7 +67,6 @@ def getMatchValue(template, image, pt1, pt2,
     
     # 閾値で二値化
     bin_trm = cv2.inRange(img_trm, thd_min, thd_max)
-        
     # 一致率の算出
     jug = cv2.matchTemplate(bin_trm, template, cv2.TM_CCORR_NORMED)
     minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug) 
@@ -107,13 +103,48 @@ def getMatchValueMask(template, image, pt1, pt2,
     bin_trm = cv2.inRange(img_trm, thd_min, thd_max)
     # マスク処理
     msk_trm = cv2.bitwise_and(bin_trm, template) 
-        
     # 一致率の算出
     jug = cv2.matchTemplate(msk_trm, template, cv2.TM_CCORR_NORMED)
     minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug) 
     
 
     return maxVal
+
+
+
+def getMostLargeColor(image, pt1, pt2, color_list):
+    ''' 
+    対象画像の指定箇所で最も面積を占める色を取得する
+    image       : 対象画像
+    pt1         : 切り取り左上座標
+    pt2         : 切り取り右下座標
+    color_list  : 候補色リスト string型
+    '''        
+    # 対象の切り抜き
+    left,  top    = pt1
+    right, bottom = pt2
+    img_trm = image[top:bottom, left:right] 
+    # BGR -> HSV
+    hsv_trm = cv2.cvtColor(img_trm, cv2.COLOR_BGR2HSV)
+        
+    # 各色の面積を記録する辞書
+    surf_set = {}
+    
+    for color in color_list:
+        # 閾値を取得
+        thd_min, thd_max = convertThreshold(color, 'HSV')   
+        # 基準色で2値化
+        bin_trm = cv2.inRange(hsv_trm, thd_min, thd_max)   
+        # 抽出された部分の面積を取得
+        s = cv2.countNonZero(bin_trm)
+        # 辞書に記録
+        surf_set[color] = s
+        
+    # 面積が最も大きかった色を取得
+    max_color = max(surf_set, key=surf_set.get)
+
+
+    return max_color
 
 
 
