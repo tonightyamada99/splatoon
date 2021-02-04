@@ -127,8 +127,8 @@ def getMostLargeColor(image, pt1, pt2, color_list):
     # BGR -> HSV
     hsv_trm = cv2.cvtColor(img_trm, cv2.COLOR_BGR2HSV)
         
-    # 各色の面積を記録する辞書
-    surf_set = {}
+    # 各色の面積を記録するリスト
+    surf_list = []
     
     for color in color_list:
         # 閾値を取得
@@ -138,13 +138,57 @@ def getMostLargeColor(image, pt1, pt2, color_list):
         # 抽出された部分の面積を取得
         s = cv2.countNonZero(bin_trm)
         # 辞書に記録
-        surf_set[color] = s
+        surf_list.append(s)
         
     # 面積が最も大きかった色を取得
-    max_color = max(surf_set, key=surf_set.get)
-
-
+    index = np.argmax(surf_list)
+    max_color = color_list[index]
+    
+    
     return max_color
+
+
+
+def getMostMatchImage(image, pt1, pt2, tmp_list, 
+                      threshold='wht', color_type='RGB'):
+    ''' 
+    対象画像の指定箇所に最も一致する画像のインデックスを取得する
+    image       : 対象画像
+    pt1         : 切り取り左上座標
+    pt2         : 切り取り右下座標
+    tmp_list    : 候補画像リスト（二値画像）
+    '''        
+    # 閾値を取得
+    thd_min, thd_max = convertThreshold(threshold, color_type) 
+    
+    # 対象の切り抜き
+    left,  top    = pt1
+    right, bottom = pt2
+    img_trm = image[top:bottom, left:right] 
+
+    # BGR -> HSV
+    if color_type == 'HSV' or color_type == 'hsv':
+        img_trm = cv2.cvtColor(img_trm, cv2.COLOR_BGR2HSV)
+        
+    # 閾値で2値化
+    bin_trm = cv2.inRange(img_trm, thd_min, thd_max)
+        
+    # 一致率が最も高いものを探す
+    val_max = 0
+    index = 'nodata'
+    for i, template in enumerate(tmp_list):
+        # マスク処理
+        msk_trm = cv2.bitwise_and(bin_trm, template) 
+        # 一致率の算出s
+        jug = cv2.matchTemplate(msk_trm, template, cv2.TM_CCORR_NORMED)
+        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug) 
+        
+        if maxVal > val_max:
+            val_max = maxVal
+            index = i
+        
+    
+    return index
 
 
 
