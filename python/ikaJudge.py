@@ -10,9 +10,9 @@ TLBR_size = (1920, 1080)    # FHD
 # 勝敗表示 win or lose
 TL_wol = ( 40,  60)
 BR_wol = (264, 132)
-# ジャッジ
-TL_jug = [(150, 850), (1320, 850)]
-BR_jug = [(600, 950), (1770, 950)]
+# カウント（パーセント）
+TL_cnt = [(150, 850), (1320, 850)]
+BR_cnt = [(600, 950), (1770, 950)]
 # ポイント
 TL_pnt = [(140, 950), (1610, 950)]
 BR_pnt = [(300, 1010), (1770, 1010)]
@@ -31,8 +31,8 @@ bin_los = cv2.imread('.\\pbm\\judge_lose.pbm', -1)
 def judgeJudge(frame):
     ''' ジャッジ画面の判定 '''     
     # win, lose両方の一致率を算出
-    val_win = iip.matchRGB(bin_win, frame, TL_wol, BR_wol, 'wht')
-    val_los = iip.matchRGB(bin_los, frame, TL_wol, BR_wol, 'wht')
+    val_win = iip.getMatchValue(bin_win, frame, TL_wol, BR_wol)
+    val_los = iip.getMatchValue(bin_los, frame, TL_wol, BR_wol)
         
     # 勝敗の一致率を比較
     if val_win > val_los:
@@ -78,9 +78,11 @@ def getJudge(frame, rule):
         # アルファとブラボー
         for i in range(2):
             # パーセントの取得
-            TL = TL_jug[i]
-            BR = BR_jug[i]
-            percent = 0.1 * iip.getNumber(frame, TL, BR, num_per, bin_per)         
+            TL = TL_cnt[i]
+            BR = BR_cnt[i]
+            percent = iip.getNumber(frame, TL, BR, num_per, bin_per)
+            # コンピュータの誤差対策に0.1をかけたら丸める
+            percent = round(percent * 0.1, 1)
             
             # ポイントの取得
             TL = TL_pnt[i]
@@ -112,9 +114,9 @@ def getJudge(frame, rule):
         # アルファとブラボー
         for i in range(2):
             # 「ノックアウト」との一致率を算出
-            TL = TL_jug[i]
-            BR = BR_jug[i]
-            val_ko = iip.matchRGB(bin_ko, frame, TL, BR, 'wht')
+            TL = TL_cnt[i]
+            BR = BR_cnt[i]
+            val_ko = iip.getMatchValue(bin_ko, frame, TL, BR)
             
             # 閾値以上ならばノックアウト
             if val_ko > thd_val:
@@ -122,8 +124,8 @@ def getJudge(frame, rule):
                 point = 500
             else:
                 # カウントの取得
-                TL = TL_jug[i]
-                BR = BR_jug[i]
+                TL = TL_cnt[i]
+                BR = BR_cnt[i]
                 count = iip.getNumber(frame, TL, BR, num_cnt, bin_cnt)          
                 
                 if count >= 0:
@@ -142,8 +144,8 @@ def getJudge(frame, rule):
 
 def test():
     ''' 動作テスト ''' 
-    img_path = 'capture_image\image_judge_14.png'
-    frame = cv2.imread(img_path)   
+    img_path = 'capture_image\image_judge_13.png'
+    frame = cv2.imread(img_path)
 
     jug_jug, wol = judgeJudge(frame)
     print(jug_jug, wol)

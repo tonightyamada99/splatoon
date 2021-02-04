@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-
+import ikaImageProcessing as iip
 
 # 要素の位置の座標
 # 設定サイズ
@@ -11,49 +11,30 @@ TL_stage = (1500,  972)
 BR_stage = (1890, 1053)
 
 # RGBの閾値[min, max](0~255, 0~255, 0~255)
-thd_rgb = {'wht':[(224, 224, 224), (255, 255, 255)]}
+thd_rgb = {'stg':[(224, 224, 224), (255, 255, 255)]}
 
 
 
 def getStage(frame):
     ''' ステージ取得 '''
-    # ステージ名表示部分の切り取り
-    l, t = TL_stage
-    r, b = BR_stage
-    img_trm = frame[t:b, l:r]
-    
-    # 白で2値化
-    bin_trm = cv2.inRange(img_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
-    
-    # 一致率とステージナンバー
-    val_stage = 0 
-    stage_num = 'nodata'
-    
-    # 23ステージ分
+    # ステージ画像読み込み 
+    tmp_list = []
     for i in range(23):
-        # ステージ名画像読み込み
-        bin_stage = cv2.imread('.\\pbm\\stage_name_' + str(i) + '.pbm', -1)
-        
-        # マスク処理
-        msk_trm = cv2.bitwise_and(bin_trm, bin_stage)
-        
-        # ステージ名画像との一致率を算出
-        jug = cv2.matchTemplate(msk_trm, bin_stage, cv2.TM_CCORR_NORMED)
-        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)
-        
-        # 一致率が最大となるステージを探す
-        if maxVal > val_stage:
-            stage_num = i
-            val_stage = maxVal  
-            
-            
+        bin_rule = cv2.imread('.\\pbm\\stage_name_' + str(i) + '.pbm', -1)
+        tmp_list.append(bin_rule)
+
+    # 最も一致するステージ画像を探す
+    # インデックスがそのままステージ番号
+    stage_num = iip.getMostMatchImage(frame, TL_stage, BR_stage, tmp_list,
+                                      threshold=thd_rgb['stg'])
+    
     return stage_num
 
 
 
 def test():
     ''' 動作テスト '''   
-    img_path = '.\\capture_image\\image_opening_stage9.png'
+    img_path = '.\\capture_image\\image_opening_stage1.png'
     frame = cv2.imread(img_path)
     
     stage_num = getStage(frame)

@@ -11,16 +11,11 @@ TLBR_size = (1920, 1080)    # FHD
 TL_ru = (914, 150) 
 BR_ru = (944, 216) 
 # ルール名
-TL_rule = ( 830, 290)
-BR_rule = (1100, 500)
-    
-# 閾値 threshold
-# 一致率
-thd_val = 0.9
+TL_rule = ( 840, 290)
+BR_rule = (1080, 490)
 
-# RGBの閾値[min, max](0~255, 0~255, 0~255)
-thd_rgb = {'blk':[(  0,   0,   0), (128, 128, 128)],
-           'wht':[(128, 128, 128), (255, 255, 255)]}
+# 一致率の閾値 threshold
+thd_val = 0.95
 
 # ルール一覧
 rule_list = ['turf', 'zones', 'tower', 'rain', 'clam']
@@ -33,40 +28,25 @@ bin_ru = cv2.imread('.\\pbm\\rule.pbm', -1)
 def judgeRule(frame):
     ''' ルール表示フレームの判定 '''    
     # 「ル」一致率算出  
-    val_ru = iip.matchRGB(bin_ru, frame, TL_ru, BR_ru, 'wht')
-
+    val_ru = iip.getMatchValue(bin_ru, frame, TL_ru, BR_ru)
     # 閾値以上ならばルール表示
-    if val_ru > thd_val:     
-        return True    
-    else:
-        return False
+    judge = True if val_ru > thd_val else False     
+    
+    return judge    
 
 
 
 def getRule(frame):
     ''' ルール取得 '''
-    # ルール表示部分の切り取り
-    l, t = TL_rule
-    r, b = BR_rule
-    img_trm = frame[t:b, l:r]
-    
-    # 白で2値化
-    bin_trm = cv2.inRange(img_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
-    
-    val_rule = 0 
+    # ルール画像読み込み 
+    tmp_list = []
     for rule_name in rule_list:
-        # ルール画像読み込み
-        img_rname = cv2.imread('.\\pbm\\rule_' + rule_name + '.pbm')
-        bin_rname = cv2.inRange(img_rname, thd_rgb['wht'][0], thd_rgb['wht'][1])
-        
-        # 一致率算出
-        jug = cv2.matchTemplate(bin_trm, bin_rname, cv2.TM_CCORR_NORMED)
-        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug) 
-        
-        # 一致率が最大のルールを探す
-        if maxVal > val_rule:
-            rule = rule_name
-            val_rule = maxVal
+        bin_rule = cv2.imread('.\\pbm\\rule_' + rule_name + '.pbm', -1)
+        tmp_list.append(bin_rule)
+
+    # 最も一致するルールを探す
+    index = iip.getMostMatchImage(frame, TL_rule, BR_rule, tmp_list)
+    rule = rule_list[index]
             
             
     return rule
@@ -75,7 +55,7 @@ def getRule(frame):
 
 def test():
     ''' 動作テスト '''   
-    img_path = '.\\capture_image\\image_opening_stage1.png'
+    img_path = '.\\capture_image\\image_opening_stage15.png'
     # img_path = '.\\capture_image\\image_sub_zones_1.png'
     frame = cv2.imread(img_path)
     

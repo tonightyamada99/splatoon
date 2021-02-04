@@ -16,45 +16,41 @@ R_pnt = 1700
 T_pnt = [184, 268, 352, 436, 698, 782, 866,  950]
 B_pnt = [234, 318, 402, 486, 750, 834, 918, 1002]
 # たおした数
-TL_kil = [(1723, 207), (1726, 291), (1729, 374), (1732, 456), 
-          (1729, 730), (1726, 813), (1723, 898), (1720, 980)]
-BR_kil = [(1759, 235), (1762, 319), (1765, 402), (1768, 484), 
-          (1765, 758), (1762, 841), (1759, 924), (1756, 1006)]
+L_kil = 1720
+R_kil = 1770
+T_kil = [206, 290, 374, 456, 730, 812, 896,  978]
+B_kil = [236, 320, 404, 486, 760, 842, 926, 1008]
 # スペシャルウエポン使用回数
-TL_spw = [(1788, 205), (1791, 288), (1794, 372), (1797, 455), 
-          (1794, 733), (1791, 816), (1788, 899), (1785, 983)]
-BR_spw = [(1824, 233), (1827, 316), (1830, 400), (1833, 483), 
-          (1830, 759), (1827, 842), (1824, 927), (1821, 1010)]
+L_spw = 1782
+R_spw = 1832
+T_spw = [204, 286, 370, 454, 732, 814, 898,  982]
+B_spw = [234, 318, 400, 484, 762, 844, 928, 1012]
 
 # 一致率の閾値 threshold
 thd_val = 0.95
 
-# 比較画像
-# win 
+# 比較画像 win
 bin_win = cv2.imread('.\\pbm\\result_win.pbm', -1)
-inv_win = cv2.bitwise_not(bin_win)
 
 
 
 def judgeResult(frame):
     ''' リザルト画面の判定 '''     
     # winとの一致率を算出 ※基準色は黒
-    val = iip.matchRGB(inv_win, frame, TL_win, BR_win, 'blk')
-    
+    val = iip.getMatchValue(bin_win, frame, TL_win, BR_win, 'blk') 
     # 一致率が閾値より大きければリザルト画面
-    if val > thd_val:     
-        return True
-    else:
-        return False
+    judge = True if val > thd_val else False     
+    
+    return judge
 
 
 
 def getResult(frame, rule):
     ''' リザルト数字取得 '''
     # 出力リスト
-    list_top  = ['pt_'   + str(i) for i in range(1, 9)]
-    list_top += ['kill_' + str(i) for i in range(1, 9)] 
-    list_top += ['sp_'   + str(i) for i in range(1, 9)]
+    list_top = ['pt_'   + str(i) for i in range(1, 9)] \
+             + ['kill_' + str(i) for i in range(1, 9)] \
+             + ['sp_'   + str(i) for i in range(1, 9)]
     result_list = [list_top, [0 for i in range(24)]]    
 
     # ナワバリバトルは塗りポイントも取得
@@ -109,21 +105,21 @@ def getResult(frame, rule):
     # 8プレイヤー分
     for i in range(8):
         # たおした数          
-        TL_k = TL_kil[i]
-        BR_k = BR_kil[i]
+        TL_kil = [L_kil, T_kil[i]]
+        BR_kil = [R_kil, B_kil[i]]
         # スペシャル回数
-        TL_s = TL_spw[i]
-        BR_s = BR_spw[i]
+        TL_spw = [L_spw, T_spw[i]]
+        BR_spw = [R_spw, B_spw[i]]
                 
         # 勝利側
         if i < 4:
-            num_kil = iip.getNumber(frame, TL_k, BR_k, num_ksw)
-            num_spw = iip.getNumber(frame, TL_s, BR_s, num_ksw)
+            num_kil = iip.getNumber(frame, TL_kil, BR_kil, num_ksw)
+            num_spw = iip.getNumber(frame, TL_spw, BR_spw, num_ksw)
             
         # 敗北側
         else:
-            num_kil = iip.getNumber(frame, TL_k, BR_k, num_ksl)
-            num_spw = iip.getNumber(frame, TL_s, BR_s, num_ksl)
+            num_kil = iip.getNumber(frame, TL_kil, BR_kil, num_ksl)
+            num_spw = iip.getNumber(frame, TL_spw, BR_spw, num_ksl)
             
         # リストに記録
         result_list[1][i+8 ] = num_kil

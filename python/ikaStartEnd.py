@@ -14,13 +14,8 @@ BR_tim = (1008, 99)
 TL_fin = (380, 630)
 BR_fin = (690, 720)
 
-# 閾値 threshold
-# 一致率
-thd_val = 0.9
-
-# RGBの閾値[min, max](0~255, 0~255, 0~255)
-thd_rgb = {'blk':[(  0,   0,   0), (128, 128, 128)],
-           'wht':[(128, 128, 128), (255, 255, 255)]}
+# 一致率の閾値 threshold
+thd_val = 0.95
 
 # 比較画像
 # 試合開始ナワバリ
@@ -34,40 +29,36 @@ bin_fin = cv2.imread('.\\pbm\\time_fin.pbm', -1)
 
 def judgeStartTurf(frame):
     ''' ナワバリ試合開始の判定 '''
-    # 一致率算出  
-    val = iip.matchRGB(bin_259, frame, TL_tim, BR_tim, 'wht')
-
+    # 「2:59」との一致率算出  
+    val = iip.getMatchValue(bin_259, frame, TL_tim, BR_tim)
     # 閾値以上ならば試合開始
-    if val > thd_val:     
-        return True    
-    else:
-        return False
+    judge = True if val > thd_val else False
+    
+    return judge
 
 
 
 def judgeStartGachi(frame):
     ''' ガチルール試合開始の判定 '''
-    # 一致率算出  
-    val = iip.matchRGB(bin_459, frame, TL_tim, BR_tim, 'wht')
-
+    # 「4:59」との一致率算出  
+    val = iip.getMatchValue(bin_459, frame, TL_tim, BR_tim)
     # 閾値以上ならば試合開始
-    if val > thd_val:     
-        return True    
-    else:
-        return False
+    judge = True if val > thd_val else False
+    
+    return judge
+
 
 
 def judgeEnd(frame):
     ''' 試合終了の判定 '''
-    # 一致率算出  
-    val = iip.matchRGB(bin_fin, frame, TL_fin, BR_fin, 'blk')
-
+    # 「FINISH」との一致率算出 ※基準色は黒
+    val = iip.getMatchValue(bin_fin, frame, TL_fin, BR_fin, 'blk')
     # 閾値以上ならば試合開始
-    if val > thd_val:     
-        return True    
-    else:
-        return False
+    judge = True if val > thd_val else False
     
+    return judge
+    
+
 
 def test():
     ''' 動作テスト '''   
