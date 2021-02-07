@@ -42,7 +42,7 @@ def printMeter(now, all):
 def selectViewpoint(frame):
     ''' 視点とプレイヤー位置を指定するウインドウを作る '''
     # 説明文画像
-    img_how = cv2.imread('viewpoint.png', 1)
+    img_how = cv2.imread('jpg\\matchstatus_viewpoint.jpg')
     H, W = img_how.shape[:2]
     scale = width_window / W
     rsz_how = cv2.resize(img_how, None, fx=scale, fy=scale)
