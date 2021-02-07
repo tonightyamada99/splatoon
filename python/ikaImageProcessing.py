@@ -81,13 +81,14 @@ def getMatchValue(template, image, pt1, pt2,
 
 
 
-def getMostLargeColor(image, pt1, pt2, color_list):
+def getMostLargeColor(image, pt1, pt2, color_list, mask='off'):
     '''
     対象画像の指定箇所で最も面積を占める色を候補色から取得する
     image       : 対象画像
     pt1         : 切り取り左上座標
     pt2         : 切り取り右下座標
     color_list  : 候補色リスト string型
+    [mask]      : 二値化後にマスク処理でノイズを少なくする
     '''
     # 対象の切り抜き
     left,  top    = pt1
@@ -104,6 +105,9 @@ def getMostLargeColor(image, pt1, pt2, color_list):
         thd_min, thd_max = convertThreshold(color, 'HSV')
         # 基準色で2値化
         bin_trm = cv2.inRange(hsv_trm, thd_min, thd_max)
+        # マスク処理
+        if mask != 'off':
+            bin_trm = cv2.bitwise_and(bin_trm, mask)
         # 抽出された部分の面積を取得
         s = cv2.countNonZero(bin_trm)
 
@@ -168,8 +172,8 @@ def getNumber(image, pt1, pt2, image_num,
     pt1         : 切り取り左上座標
     pt2         : 切り取り右下座標
     image_num   : 数字画像 [0~9]の順の二値画像リスト
-    image_unit  : 単位画像 範囲に単位が含まれる場合は入力
-    threshold   : 色閾値 [min, max] で指定
+    [image_unit]: 単位画像 範囲に単位が含まれる場合は入力
+    [threshold] : 色閾値を色名か[min, max]で指定
     '''
     # 閾値を取得
     thd_min, thd_max = convertThreshold(threshold)
@@ -258,19 +262,6 @@ def getNumber(image, pt1, pt2, image_num,
 
 def test():
     ''' 動作テスト '''
-
-    img_path = '.\\capture_image\\image_opening_stage1.png'
-    img_path = '.\\capture_image\\image_sub_zones_1.png'
-    frame = cv2.imread(img_path)
-
-    tmp_path = '.\\pbm\\sign_nice.pbm'
-    bin_tmp = cv2.imread(tmp_path, -1)
-
-    TL = ( 68, 1016)
-    BR = (132, 1048)
-    val_rule = getMatchValueMask(bin_tmp, frame, TL, BR)
-
-    print(val_rule)
 
 
 
