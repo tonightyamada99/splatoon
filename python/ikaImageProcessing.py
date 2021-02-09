@@ -15,8 +15,8 @@ thd_rgb = {'blk':[(  0,   0,   0), (128, 128, 128)],
            'wht':[(128, 128, 128), (255, 255, 255)]}
 
 # HSV[min, max](0~179, 0~255, 0~255)
-thd_hsv = {'blk':[(  0,   0,   0), (179,  64, 128)],    # 黒
-           'wht':[(  0,   0, 128), (179,  64, 255)],    # 白
+thd_hsv = {'blk':[(  0,   0,   0), (179, 255, 128)],
+           'wht':[(  0,   0, 192), (179, 128, 255)],
            'spw':[(  0,  16, 128), (179, 128, 255)],    # スペシャル状態
            'yel':[( 20, 128, 128), ( 30, 255, 255)],
            'blu':[(125, 128, 128), (135, 255, 255)]}
@@ -164,7 +164,8 @@ def getMostMatchImage(image, pt1, pt2, tmp_list,
 
 
 def getNumber(image, pt1, pt2, image_num,
-              image_unit='nounit', threshold='wht'):
+              threshold='wht', color_type='RGB',
+              image_unit='nounit', resize='off'):
     '''
     対象画像の指定箇所の数字を取得する
     数字のみの認識となるため小数点は返り値を0.1倍などして対応する
@@ -172,11 +173,13 @@ def getNumber(image, pt1, pt2, image_num,
     pt1         : 切り取り左上座標
     pt2         : 切り取り右下座標
     image_num   : 数字画像 [0~9]の順の二値画像リスト
-    [image_unit]: 単位画像 範囲に単位が含まれる場合は入力
     [threshold] : 色閾値を色名か[min, max]で指定
+    [color_type]: 二値化する色空間をRGB/HSVで指定
+    [image_unit]: 単位画像を範囲に単位が含まれる場合は入力
+    [resize]    : 数字の大きさが変化する場合はリサイズ後に認識する
     '''
     # 閾値を取得
-    thd_min, thd_max = convertThreshold(threshold)
+    thd_min, thd_max = convertThreshold(threshold, color_type)
 
     # 数字の高さと幅の最大最小を取得
     h_list = [image_num[i].shape[0] for i in range(10)]
@@ -188,6 +191,10 @@ def getNumber(image, pt1, pt2, image_num,
     left,  top    = pt1
     right, bottom = pt2
     img_trm = image[top:bottom, left:right]
+
+    # BGR -> HSV
+    if color_type == 'HSV' or color_type == 'hsv':
+        img_trm = cv2.cvtColor(img_trm, cv2.COLOR_BGR2HSV)
 
     # 閾値で2値化
     bin_trm = cv2.inRange(img_trm, thd_min, thd_max)
@@ -221,6 +228,12 @@ def getNumber(image, pt1, pt2, image_num,
         if h > h_min*0.9:
             # 対象を切り取り
             bin_tmp = bin_trm[y:y+h, x:x+w]
+
+            # 対象をリサイズ
+            if resize != 'off':
+                scale = h_min / h
+                bin_tmp = cv2.resize(bin_tmp, None, fx=scale, fy=scale)
+                h, w = bin_tmp.shape
 
             # 対象を黒画像に貼り付け target
             # 数字ごとの大きさの違いに対応するため
