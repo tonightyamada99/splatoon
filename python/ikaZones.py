@@ -100,7 +100,7 @@ def getCount(frame, team_color, control):
 def judgePenalty(frame):
     ''' ペナルティカウントの有無を判別する '''
     # 記録リスト
-    judge_penalty = [False, False]
+    judge_list = [False, False]
 
     # アルファとブラボー
     for i in range(2):
@@ -121,15 +121,15 @@ def judgePenalty(frame):
             h = stats[index][3]
 
             # 縦横の差が小さく、平均が閾値以内ならばプラス表示
-            ave = (w+h)/2
             dif = abs(w-h)
+            ave = (w+h)/2
 
-            if dif <= 1 and size_pls[0] <= ave <= size_pls[1]:
+            if dif <= 2 and size_pls[0] <= ave <= size_pls[1]:
                 # プラス表示 -> ペナルティあり
-                judge_penalty[i] = True
+                judge_list[i] = True
 
 
-    return judge_penalty
+    return judge_list
 
 
 
@@ -214,11 +214,10 @@ def getRatio(frame, zones_num, team_color):
 
 
 
-
 def test():
     ''' 動作テスト '''
 
-    for i in range(35):
+    for i in range(21, 35):
         img_path = 'capture_image\\image_obj_zones_' + str(i).zfill(2) + '.png'
         frame = cv2.imread(img_path)
 
@@ -250,7 +249,6 @@ def test():
         # プレビュー
         scale = 0.5
         img_rsz = cv2.resize(frame , None, fx=scale, fy=scale)
-
         cv2.imshow('Preview', img_rsz)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
