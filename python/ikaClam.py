@@ -296,7 +296,7 @@ def test():
 
         # プレビュー
         scale = 0.5
-        img_rsz = cv2.resize(frame , None, fx=scale, fy=scale)
+        img_rsz = cv2.resize(frame, None, fx=scale, fy=scale)
         cv2.imshow('Preview', img_rsz)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
