@@ -39,6 +39,33 @@ thd_rgb = {'blk':[(  0,   0,   0), ( 64,  64,  64)],
            'wht':[(192, 192, 192), (255, 255, 255)]}
 
 
+def getListTop():
+    ''' 記録リストの先頭行を返す '''
+    list_top = ['control', 'count_alfa', 'count_bravo',
+                'penalty_count_alfa', 'penalty_count_bravo',
+                'clam_num_alfa', 'clam_num_bravo']
+
+    return list_top
+
+
+def getData(frame, team_color):
+    ''' フレームに対しての一連の処理を行う '''
+    # 確保状況
+    control = getControl(frame, team_color)
+    # カウント
+    count_list = getCount(frame, team_color, control)
+    # ペナルティカウントの有無
+    judge_penalty = judgePenalty(frame)
+    # ペナルティカウント
+    pcount_list = getPenaltyCount(frame, judge_penalty)
+    # アサリ保持数
+    clam_list = getClam(frame)
+    # 出力リスト
+    out_list = [control] + count_list + pcount_list + clam_list
+
+    return out_list
+
+
 
 def getControl(frame, team_color):
     ''' ゴールの状況を取得する '''
@@ -58,9 +85,7 @@ def getControl(frame, team_color):
         if max_color == team_color[i]:
             control = i+1
 
-
     return control
-
 
 
 def getCount(frame, team_color, control):
@@ -91,9 +116,7 @@ def getCount(frame, team_color, control):
         # リストに記録
         count_list[i] = count
 
-
     return count_list
-
 
 
 def judgePenalty(frame):
@@ -110,7 +133,7 @@ def judgePenalty(frame):
         # 白で二値化
         bin_trm = cv2.inRange(img_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
         # ラベリング処理
-        retval, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_trm)
+        retval, labels, stats, cent = cv2.connectedComponentsWithStats(bin_trm)
         retval = retval - 1
         stats = np.delete(stats, 0, 0)
 
@@ -127,9 +150,7 @@ def judgePenalty(frame):
                 # プラス表示 -> ペナルティあり
                 judge_list[i] = True
 
-
     return judge_list
-
 
 
 def getPenaltyCount(frame, jug_pena):
@@ -159,13 +180,11 @@ def getPenaltyCount(frame, jug_pena):
             # リストに記録
             pcount_list[i] = count
 
-
     return pcount_list
 
 
-
 def getClam(frame):
-    ''' アサリ所有数を取得する '''
+    ''' アサリ保持数を取得する '''
     # 記録リスト
     clam_list = [0, 0]
 
@@ -194,7 +213,7 @@ def getClam(frame):
         # アサリの数は数字の大きさの幅が大きいため二値画像に余分な部分が多い
         # 数字は中央付近の白部分だけとなるためそのラベル数字を取得する
         # ラベリング処理
-        retval, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_trm)
+        retval, labels, stats, cent = cv2.connectedComponentsWithStats(bin_trm)
         # ラベル画像の中央部分を切り抜き
         h, w = bin_trm.shape
         t, l = round(h * 1/4), round(w * 1/4)
@@ -251,7 +270,6 @@ def getClam(frame):
 
         # 記録リストをx座標の大きい順（下の桁から上へ）にソート
         num_list.sort(key=lambda x: x[1], reverse=True)
-
         # ソートしたリストを数字に変換
         # 桁の小さい順に並んでいるので(数字)×10^(インデックス)で変換できる
         number = 0
@@ -261,9 +279,7 @@ def getClam(frame):
 
         clam_list[i] = number
 
-
     return clam_list
-
 
 
 def test():
@@ -278,21 +294,15 @@ def test():
 
         import ikaLamp
         team_color = ikaLamp.getTeamColor(frame)
-        print('color  ', team_color[0], team_color[1])
 
-        control = getControl(frame, team_color)
-        print('control', control)
+        data_list = getData(frame, team_color)
 
-        count_list = getCount(frame, team_color, control)
-        print('count  ', count_list[0], count_list[1])
-
-        judge_penalty = judgePenalty(frame)
-        pcount_list = getPenaltyCount(frame, judge_penalty)
-        print('pcount ', pcount_list[0], pcount_list[1])
-
-        clam_list = getClam(frame)
-        print('clam   ', clam_list[0], clam_list[1])
-
+        print('====================================')
+        print(img_path)
+        print('control', data_list[0])
+        print('count  ', data_list[1], data_list[2])
+        print('pcount ', data_list[3], data_list[4])
+        print('clam num', round(data_list[5], 3), round(data_list[6], 3))
 
         # プレビュー
         scale = 0.5
@@ -300,7 +310,6 @@ def test():
         cv2.imshow('Preview', img_rsz)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
 
 
 if __name__ == "__main__":

@@ -40,6 +40,34 @@ thd_hsv = {'blk':[(  0,   0,   0), (179, 255, 128)],
            'blu':[(125, 128, 128), (135, 255, 255)]}
 
 
+def getListTop(zones_num):
+    ''' 記録リストの先頭行を返す '''
+    list_top = ['control', 'count_alfa', 'count_bravo',
+                'penalty_count_alfa', 'penalty_count_bravo',
+                'ratio_1_alfa', 'ratio_1_bravo']
+    if zones_num == 2:
+        list_top += ['ratio_2_alfa', 'ratio_2_bravo']
+
+    return list_top
+
+
+def getData(frame, zones_num, team_color):
+    ''' フレームに対しての一連の処理を行う '''
+    # 確保状況
+    control = getControl(frame, team_color)
+    # カウント
+    count_list = getCount(frame, team_color, control)
+    # ペナルティカウントの有無
+    judge_penalty = judgePenalty(frame)
+    # ペナルティカウント
+    pcount_list = getPenaltyCount(frame, judge_penalty)
+    # エリア塗り割合
+    ratio_list = getRatio(frame, zones_num, team_color)
+    # 出力リスト
+    out_list = [control] + count_list + pcount_list + ratio_list
+
+    return out_list
+
 
 def getControl(frame, team_color):
     ''' エリアの確保状況を取得する '''
@@ -59,9 +87,7 @@ def getControl(frame, team_color):
         if max_color == team_color[i]:
             control = i+1
 
-
     return control
-
 
 
 def getCount(frame, team_color, control):
@@ -87,14 +113,11 @@ def getCount(frame, team_color, control):
         BR = (R_cnt[i], B_cnt[1])
         # カウント数字取得
         count = iip.getNumber(frame, TL, BR, image_num,
-                              threshold=color, color_type='HSV',resize='on')
-
+                              threshold=color, color_type='HSV', resize='on')
         # リストに記録
         count_list[i] = count
 
-
     return count_list
-
 
 
 def judgePenalty(frame):
@@ -111,7 +134,7 @@ def judgePenalty(frame):
         # 白で二値化
         bin_trm = cv2.inRange(img_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
         # ラベリング処理
-        retval, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_trm)
+        retval, labels, stats, cent = cv2.connectedComponentsWithStats(bin_trm)
         retval = retval - 1
         stats = np.delete(stats, 0, 0)
 
@@ -123,14 +146,11 @@ def judgePenalty(frame):
             # 縦横の差が小さく、平均が閾値以内ならばプラス表示
             dif = abs(w-h)
             ave = (w+h)/2
-
             if dif <= 2 and size_pls[0] <= ave <= size_pls[1]:
                 # プラス表示 -> ペナルティあり
                 judge_list[i] = True
 
-
     return judge_list
-
 
 
 def getPenaltyCount(frame, jug_pena):
@@ -160,15 +180,13 @@ def getPenaltyCount(frame, jug_pena):
             # リストに記録
             pcount_list[i] = count
 
-
     return pcount_list
-
 
 
 def getRatio(frame, zones_num, team_color):
     ''' エリアの塗り割合を取得する '''
     # 記録リスト
-    ratio = []
+    ratio_list = []
 
     # エリアの数で位置座標のインデックスを設定
     index_list = [[], [0], [1, 2]][zones_num]
@@ -197,54 +215,41 @@ def getRatio(frame, zones_num, team_color):
 
         # 総面積
         surf_sum = sum(surf_list)
-
+        # 塗り割合を計算
         # 0で割ってはいけない
         if surf_sum != 0:
             for i in range(2):
                 # 割合を計算してリストに記録
                 r = surf_list[i] / surf_sum
-                ratio.append(r)
-
+                ratio_list.append(r)
         else:
             # 総面積が0ならば0を記録しておく
-            ratio += [0, 0]
+            ratio_list += [0, 0]
 
-
-    return ratio
-
+    return ratio_list
 
 
 def test():
     ''' 動作テスト '''
 
-    for i in range(21, 35):
+    for i in range(35):
         img_path = 'capture_image\\image_obj_zones_' + str(i).zfill(2) + '.png'
         frame = cv2.imread(img_path)
 
-        print('====================================')
-        print(img_path)
-
         import ikaLamp
         team_color = ikaLamp.getTeamColor(frame)
-        print('color  ', team_color[0], team_color[1])
-
-        control = getControl(frame, team_color)
-        print('control', control)
-
-        count_list = getCount(frame, team_color, control)
-        print('count  ', count_list[0], count_list[1])
-
-        judge_penalty = judgePenalty(frame)
-        pcount_list = getPenaltyCount(frame, judge_penalty)
-        print('pcount ', pcount_list[0], pcount_list[1])
 
         zones_num = 1
-        ratio = getRatio(frame, zones_num, team_color)
+        data_list = getData(frame, zones_num, team_color)
 
-        print('ratio1 ', round(ratio[0]*100, 2), round(ratio[1]*100, 2))
+        print('====================================')
+        print(img_path)
+        print('control', data_list[0])
+        print('count  ', data_list[1], data_list[2])
+        print('pcount ', data_list[3], data_list[4])
+        print('ratio1 ', round(data_list[5], 3), round(data_list[6], 3))
         if zones_num == 2:
-            print('ratio2 ', round(ratio[2]*100, 2), round(ratio[3]*100, 2))
-
+            print('ratio1 ', round(data_list[7], 3), round(data_list[8], 3))
 
         # プレビュー
         scale = 0.5

@@ -14,7 +14,7 @@ BR_mtr = (1430, 168)
 L_end =  514
 R_end = 1405
 # カウントのこり
-T_rmn = 200
+T_rmn = 202
 B_rmn = 218
 L_rmn = [ 930, 480]
 R_rmn = [1440, 990]
@@ -23,7 +23,7 @@ T_cnt = 216
 B_cnt = 256
 
 # 「のこり」の一致率
-thd_rmn = 0.8
+thd_rmn = 0.75
 # カウント表示の幅
 width_count = 64
 
@@ -31,6 +31,24 @@ width_count = 64
 # RGB[min, max](0~255, 0~255, 0~255)
 thd_rgb = {'wht':[(128, 128, 128), (255, 255, 255)]}
 
+
+def getListTop():
+    ''' 記録リストの先頭行を返す '''
+    list_top = ['control', 'location', 'count_alfa', 'count_bravo']
+
+    return list_top
+
+
+def getData(frame):
+    ''' フレームに対しての一連の処理を行う '''
+    # 確保状況
+    control, location = getControl(frame)
+    # カウント
+    count_list = getCount(frame)
+    # 出力リスト
+    out_list = [control, location] + count_list
+
+    return out_list
 
 
 def getControl(frame):
@@ -71,12 +89,10 @@ def getControl(frame):
     center = (L_end + R_end) / 2
     location = (loc_meter - center) / (R_end - center)
 
-
     return control, location
 
 
-
-def getCount(frame, team_color):
+def getCount(frame):
     ''' カウントを取得する '''
     # 記録リスト
     count_list = ['nodata', 'nodata']
@@ -123,9 +139,7 @@ def getCount(frame, team_color):
             # リストに記録
             count_list[i] = count
 
-
     return count_list
-
 
 
 def test():
@@ -135,20 +149,13 @@ def test():
         img_path = 'capture_image\\image_obj_tower_' + str(i).zfill(2) + '.png'
         frame = cv2.imread(img_path)
 
+        data_list = getData(frame)
+
         print('====================================')
         print(img_path)
-
-        import ikaLamp
-        team_color = ikaLamp.getTeamColor(frame)
-        print('color   ', team_color[0], team_color[1])
-
-        control, location = getControl(frame)
-        print('control ', control)
-        print('location', location)
-
-        count_list = getCount(frame, team_color)
-        print('count   ', count_list[0], count_list[1])
-
+        print('control ', data_list[0])
+        print('location', data_list[1])
+        print('count   ', data_list[2], data_list[3])
 
         # プレビュー
         scale = 0.5
@@ -156,7 +163,6 @@ def test():
         cv2.imshow('Preview', img_rsz)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
 
 
 if __name__ == "__main__":
