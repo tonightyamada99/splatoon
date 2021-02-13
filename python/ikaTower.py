@@ -32,14 +32,14 @@ width_count = 64
 thd_rgb = {'wht':[(128, 128, 128), (255, 255, 255)]}
 
 
-def getListTop():
+def listtop():
     ''' 記録リストの先頭行を返す '''
     list_top = ['control', 'location', 'count_alfa', 'count_bravo']
 
     return list_top
 
 
-def getData(frame):
+def frame(frame):
     ''' フレームに対しての一連の処理を行う '''
     # 確保状況
     control, location = getControl(frame)
@@ -149,7 +149,7 @@ def test():
         img_path = 'capture_image\\image_obj_tower_' + str(i).zfill(2) + '.png'
         frame = cv2.imread(img_path)
 
-        data_list = getData(frame)
+        data_list = frame(frame)
 
         print('====================================')
         print(img_path)

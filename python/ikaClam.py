@@ -39,7 +39,7 @@ thd_rgb = {'blk':[(  0,   0,   0), ( 64,  64,  64)],
            'wht':[(192, 192, 192), (255, 255, 255)]}
 
 
-def getListTop():
+def listtop():
     ''' 記録リストの先頭行を返す '''
     list_top = ['control', 'count_alfa', 'count_bravo',
                 'penalty_count_alfa', 'penalty_count_bravo',
@@ -48,7 +48,7 @@ def getListTop():
     return list_top
 
 
-def getData(frame, team_color):
+def frame(frame, team_color):
     ''' フレームに対しての一連の処理を行う '''
     # 確保状況
     control = getControl(frame, team_color)
@@ -295,7 +295,7 @@ def test():
         import ikaLamp
         team_color = ikaLamp.getTeamColor(frame)
 
-        data_list = getData(frame, team_color)
+        data_list = frame(frame, team_color)
 
         print('====================================')
         print(img_path)
