@@ -23,7 +23,7 @@ T_lamp = {'subSS':33, 'objSS':50,
 # 下
 B_lamp = {'subSS':108, 'objSS':90,
           'subSM':110, 'objSM':92,
-          'subMM':114, 'objMM':94,
+          'subMM':113, 'objMM':94,
           'subML':115, 'objML':95,
           'subLL':117, 'objLL':96}
 # 左
@@ -74,38 +74,57 @@ thd_rgb = {'blk':[(  0,   0,   0), (128, 128, 128)],
 thd_hsv = {'blk':[(  0,   0,   0), (179,  64, 128)],    # 黒
            'wht':[(  0,   0, 128), (179,  64, 255)],    # 白
            'spw':[(  0,  16, 128), (179, 128, 255)],    # スペシャル状態
-           'yel':[( 90, 128, 128), (100, 255, 255)],
-           'blu':[(165, 128, 128), (175, 255, 255)]}
+           'yel':[( 20, 128, 128), ( 30, 255, 255)],
+           'blu':[(125, 128, 128), (135, 255, 255)]}
 
 # チームカラー候補
 color_catalog = ['yel', 'blu']
 
 # 比較画像
-# バツ印 cross
-# 味方 good guys
+# バツ印:cross  味方:good guys  相手:bad guys
 bin_ggc = cv2.imread('.\\pbm\\map_gg_cross.pbm', -1)
-# 相手 bad guys
 bin_bgc = cv2.imread('.\\pbm\\map_bg_cross.pbm', -1)
-
-# スペシャル状態 spw
-# 味方
+# スペシャル状態:special weapon
 bin_ggs = cv2.imread('.\\pbm\\map_gg_spw.pbm', -1)
-# 相手
 bin_bgs = cv2.imread('.\\pbm\\map_bg_spw.pbm', -1)
-
 # 比較画像リスト
 bin_crs  = [bin_ggc, bin_bgc]
 bin_spw  = [bin_ggs, bin_bgs]
 
 
+def listtop():
+    ''' 記録リストの先頭行を返す '''
+    list_top =  ['status_' + str(i) for i in range(8)]
+
+    return list_top
 
 
-def getClosestIdx(list, num):
+def frameObjective(frame, team_color):
+    ''' 俯瞰視点:フレームに対しての一連の処理を行う '''
+    # ランプの大きさ
+    lamp_size = getSizeObjective(frame)
+    # 生存状況
+    lamp_list = getStatus(frame, team_color, 'obj', lamp_size)
+
+    return lamp_list
+
+
+def frameSubjective(frame, team_color):
+    ''' 主観視点:フレームに対しての一連の処理を行う '''
+    # ランプの大きさ
+    lamp_size = getSizeSubjective(frame)
+    # 生存状況
+    lamp_list = getStatus(frame, team_color, 'sub', lamp_size)
+
+    return lamp_list
+
+
+def getClosestIndex(list, num):
     ''' 最も近い値のインデックスを返す '''
     abs_list = np.abs(np.asarray(list) - num)
-    idx = abs_list.argmin()
-    return idx
+    index = abs_list.argmin()
 
+    return index
 
 
 def getTeamColor(frame):
@@ -118,15 +137,12 @@ def getTeamColor(frame):
         # 対象は4プレイヤー分のイカランプ
         TL = (L_lamp['MM'][0+4*i], T_lamp['subMM'])
         BR = (R_lamp['MM'][3+4*i], B_lamp['subMM'])
-
         # 最も面積を占める色をチームカラー候補から取得
         max_color = iip.getMostLargeColor(frame, TL, BR, color_catalog)
         # リストに記録
         team_color[i] = max_color
 
-
     return team_color
-
 
 
 def getShape(frame, team_color):
@@ -144,23 +160,18 @@ def getShape(frame, team_color):
         # 基準色のインデックスはiが3以下は0、4以上は1
         idx = 0 if i<=3 else 1
         thd = team_color[idx]
-
         # イカランプ座標
         TL = (L_lamp['MM'][i], T_lamp['subMM'])
         BR = (R_lamp['MM'][i], B_lamp['subMM'])
-
-        # 比較画像のうち一致率が大きいのはどれか取得する
+        # 一致率が大きい比較画像を取得
         tmp_index = iip.getMostMatchImage(frame, TL, BR, tmp_list,
                                           threshold=thd, color_type='HSV')
-
         # インデックスを形名に反映
         shape = ['ika', 'oct'][tmp_index]
         # リストに記録
         shape_list[i] = shape
 
-
     return shape_list
-
 
 
 def getSizeSubjective(frame):
@@ -172,9 +183,7 @@ def getSizeSubjective(frame):
     # 作成中... #
     #############
 
-
     return lamp_size
-
 
 
 def getSizeObjective(frame):
@@ -186,50 +195,43 @@ def getSizeObjective(frame):
     left,  top    = TL_button
     right, bottom = BR_button
     img_trm = frame[top:bottom, left:right]
-
     # 白で2値化
     bin_trm = cv2.inRange(img_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
 
     # ラベリング処理
-    retval, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_trm)
+    retval, labels, stats, cent = cv2.connectedComponentsWithStats(bin_trm)
     retval = retval - 1
     stats = np.delete(stats, 0, 0)
-
+    # Bボタン部分を探す
     for index in range(retval):
         w = stats[index][2]
         h = stats[index][3]
         s = stats[index][4]
-
         # 縦横の平均値が判定値
         ave = (w+h)/2
-
         # 面積が閾値以上ならばボタン
         if s > thd_button:
             # 判定値がどのボタンの大きさに近いか
-            idx = getClosestIdx(size_button, ave)
-
+            idx = getClosestIndex(size_button, ave)
             # 大きさのインデックス == サイズ名インデックス
             lamp_size[0] = size_list[4-idx]
             lamp_size[1] = size_list[idx]
 
-
     return lamp_size
-
 
 
 def getStatus(frame, team_color, viewpoint, lamp_size):
     ''' イカランプの状態を取得する '''
-    # 基準色リスト [黒, チームカラー, スペシャル状態]
-    lamp_color = [['blk', color, 'spw'] for color in team_color]
-
     # 記録リスト 0:dead  1:alive  2:sp
     lamp_list = ['nodata' for i in range(8)]
+
+    # 基準色リスト [黒, チームカラー, スペシャル状態]
+    lamp_color = [['blk', color, 'spw'] for color in team_color]
 
     # 8プレイヤー分
     for i in range(8):
         # サイズなどのインデックスはiが3以下は0、4以上は1
         idx = 0 if i<=3 else 1
-
         # イカランプ座標
         left   = L_lamp[lamp_size[idx]][i]
         right  = R_lamp[lamp_size[idx]][i]
@@ -237,7 +239,6 @@ def getStatus(frame, team_color, viewpoint, lamp_size):
         bottom = B_lamp[viewpoint + lamp_size[idx]]
         TL = (left, top)
         BR = (right, bottom)
-
         # 最も面積を占める色を取得
         max_color = iip.getMostLargeColor(frame, TL, BR, lamp_color[idx])
         # 最大の色のインデックス -> イカランプの状態
@@ -245,9 +246,7 @@ def getStatus(frame, team_color, viewpoint, lamp_size):
         # リストに記録
         lamp_list[i] = status
 
-
     return lamp_list
-
 
 
 def getStatusMap(frame, team_color):
@@ -262,11 +261,9 @@ def getStatusMap(frame, team_color):
     for i in range(7):
         # サイズなどのインデックスはiが2以下は0、3以上は1
         idx = 0 if i<=2 else 1
-
         # イカランプ座標
         TL = TL_map[i]
         BR = BR_map[i]
-
         # バツ印の一致率を算出
         val_crs = iip.getMatchValue(bin_crs[idx], frame, TL, BR,
                                     team_color[idx], 'hsv', 'mask')
@@ -280,19 +277,15 @@ def getStatusMap(frame, team_color):
             # スペシャル状態で2値化
             val_spw = iip.getMatchValue(bin_spw[idx], frame, TL, BR,
                                         'spw', 'hsv', 'mask')
-
             # 閾値はちょっとゆるめに設定
             if val_spw > thd_val * 0.7:
                 doa = 2
             else:
                 doa = 1
-
         # 記録
         lamp_list[i] = doa
 
-
     return lamp_list
-
 
 
 def test():
@@ -352,7 +345,6 @@ def test():
         cv2.imshow('Preview', img_rsz)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
-
 
 
 if __name__ == "__main__":
