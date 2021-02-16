@@ -68,6 +68,7 @@ thd_val = 0.9
 
 # RGB[min, max](0~255, 0~255, 0~255)
 thd_rgb = {'blk':[(  0,   0,   0), (128, 128, 128)],
+           'gry':[( 96,  96,  96), (160, 160, 160)],
            'wht':[(128, 128, 128), (255, 255, 255)]}
 
 # HSV[min, max](0~179, 0~255, 0~255)
@@ -174,14 +175,91 @@ def getShape(frame, team_color):
     return shape_list
 
 
-def getSizeSubjective(frame):
-    ''' 主観：ランプの大きさを取得する '''
+def readLampImage():
+    ''' 主観視点の状態把握に使う画像読み込み '''
+    # イカ
+    ika_list = []
+    oct_list = []
+    crs_list = []
+    for size in size_list:
+        # イカ
+        bin_tmp = cv2.imread('png\\lamp_ika_' + size + '.png', -1)
+        ika_list.append(bin_tmp)
+        # タコ
+        bin_tmp = cv2.imread('png\\lamp_oct_' + size + '.png', -1)
+        oct_list.append(bin_tmp)
+        # バツ印
+        bin_tmp = cv2.imread('png\\lamp_cross_' + size + '.png', -1)
+        crs_list.append(bin_tmp)
+
+    return ika_list, oct_list, crs_list
+
+
+def getSizeSubjective(frame, team_color, lamp_list, cross_list):
+    '''
+    主観：ランプの大きさを取得する
+    左から4番目を基準イカランプとしてその大きさを調べる
+    '''
     # ランプ大きさ SS, SM, MM, ML, LL
     lamp_size = ['nodata', 'nodata']
 
-    #############
-    # 作成中... #
-    #############
+    # 基準イカランプ切り出し
+    top    = T_lamp['subLL']
+    bottom = B_lamp['subLL']
+    left   = L_lamp['LL'][3]
+    right  = R_lamp['LL'][3]
+    img_trm = frame[top:bottom, left:right]
+    # BGR -> HSV
+    hsv_trm = cv2.cvtColor(img_trm, cv2.COLOR_BGR2HSV)
+
+    # 基準イカランプの状態を把握する
+    # 基準色
+    color_list = ['blk', team_color[0], 'spw']
+    # マスク処理でランプ外の部分の影響を小さくする
+    msk_tmp = lamp_list[4]
+    # 抽出された面積が最も大きい色を探す
+    s_max = 0
+    color_max = 'nodata'
+    bin_max = 0
+    for color in color_list:
+        # 閾値を取得
+        thd_min, thd_max = thd_hsv[color]
+        # 基準色で2値化
+        bin_trm = cv2.inRange(hsv_trm, thd_min, thd_max)
+        # マスク処理
+        msk_trm = cv2.bitwise_and(bin_trm, msk_tmp)
+        # 抽出された部分の面積を取得
+        s = cv2.countNonZero(msk_trm)
+
+        if s > s_max:
+            s_max = s
+            color_max = color
+            bin_max = bin_trm
+
+    # 黒以外の場合は状態取得で使った二値化画像を流用
+    if color_max != 'blk':
+        tmp_list = lamp_list
+        bin_tgt = bin_max
+    # 黒の場合はバツ印で大きさ判別するためグレーで二値化
+    else:
+        tmp_list = cross_list
+        bin_tgt = cv2.inRange(img_trm, thd_rgb['gry'][0], thd_rgb['gry'][1])
+
+    # 候補画像で一致率が最も高いものを探す
+    val_max = 0
+    index = 'nodata'
+    for i, template in enumerate(tmp_list):
+        # 一致率算出
+        jug = cv2.matchTemplate(bin_tgt, template, cv2.TM_CCORR_NORMED)
+        minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)
+
+        if maxVal > val_max:
+            val_max = maxVal
+            index = i
+
+    # 大きさのインデックス == サイズ名インデックス
+    lamp_size[0] = size_list[index]
+    lamp_size[1] = size_list[4-index]
 
     return lamp_size
 
@@ -341,7 +419,6 @@ def test():
         # プレビュー
         scale = 0.5
         img_rsz = cv2.resize(frame, None, fx=scale, fy=scale)
-
         cv2.imshow('Preview', img_rsz)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
