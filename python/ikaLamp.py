@@ -27,17 +27,26 @@ B_lamp = {'subSS':108, 'objSS':90,
           'subML':115, 'objML':95,
           'subLL':117, 'objLL':96}
 # 左
-L_lamp = {'SS':[570, 646, 721, 797, 1049, 1125, 1200, 1276],
-          'SM':[554, 635, 715, 796, 1049, 1129, 1210, 1291],
-          'MM':[536, 622, 708, 794, 1046, 1132, 1218, 1304],
-          'ML':[518, 609, 700, 792, 1045, 1136, 1228, 1319],
-          'LL':[498, 596, 692, 789, 1042, 1138, 1236, 1332]}
+L_lamp = {'SS':[572, 648, 723, 799, 1051, 1127, 1202, 1278],
+          'SM':[554, 635, 716, 797, 1049, 1130, 1211, 1292],
+          'MM':[536, 623, 709, 795, 1047, 1133, 1219, 1306],
+          'ML':[518, 610, 701, 793, 1045, 1137, 1228, 1320],
+          'LL':[500, 597, 694, 791, 1043, 1140, 1237, 1334]}
 # 右
 R_lamp = {'SS':[642, 718, 793, 869, 1121, 1197, 1272, 1348],
-          'SM':[628, 709, 789, 870, 1123, 1203, 1284, 1365],
-          'MM':[614, 700, 786, 872, 1124, 1210, 1296, 1382],
-          'ML':[600, 691, 782, 874, 1127, 1218, 1310, 1401],
-          'LL':[586, 684, 780, 877, 1130, 1226, 1324, 1420]}
+          'SM':[628, 709, 790, 871, 1123, 1204, 1285, 1366],
+          'MM':[614, 701, 787, 873, 1125, 1211, 1297, 1384],
+          'ML':[600, 692, 783, 875, 1127, 1219, 1310, 1402],
+          'LL':[586, 683, 780, 877, 1129, 1226, 1323, 1420]}
+# 中央
+C_lamp = {'SS':[607, 683, 758, 834, 1086, 1162, 1237, 1313],
+          'SM':[591, 672, 753, 834, 1086, 1167, 1248, 1329],
+          'MM':[575, 662, 748, 834, 1086, 1172, 1258, 1345],
+          'ML':[559, 651, 742, 834, 1086, 1178, 1269, 1361],
+          'LL':[543, 640, 737, 834, 1086, 1183, 1280, 1377]}
+# 幅（半分）
+W_lamp = {'SS':35, 'SM':37, 'MM':39, 'ML':41, 'LL':43}
+
 # 中立状態（将来的に削除）
 L_lamp_n = [518, 629, 709, 792, 1047, 1130, 1220, 1311]
 R_lamp_n = [608, 699, 789, 872, 1127, 1210, 1290, 1401]
@@ -148,9 +157,9 @@ def getTeamColor(frame):
 
 def getShape(frame, team_color):
     ''' イカランプの形を取得する '''
-    # イカとタコの比較画像読み込み
-    bin_ika = cv2.imread('.\\pbm\\ikalamp_ika.pbm', -1)
-    bin_oct = cv2.imread('.\\pbm\\ikalamp_oct.pbm', -1)
+    # イカとタコの比較画像読み込み（LLサイズの切り抜き）
+    bin_ika = cv2.imread('.\\pbm\\lamp_ika_MM.pbm', -1)
+    bin_oct = cv2.imread('.\\pbm\\lamp_oct_MM.pbm', -1)
     tmp_list = [bin_ika, bin_oct]
 
     # 記録リスト
@@ -161,14 +170,18 @@ def getShape(frame, team_color):
         # 基準色のインデックスはiが3以下は0、4以上は1
         idx = 0 if i<=3 else 1
         thd = team_color[idx]
-        # イカランプ座標
-        TL = (L_lamp['MM'][i], T_lamp['subMM'])
-        BR = (R_lamp['MM'][i], B_lamp['subMM'])
-        # 一致率が大きい比較画像を取得
-        tmp_index = iip.getMostMatchImage(frame, TL, BR, tmp_list,
-                                          threshold=thd, color_type='HSV')
+        # イカランプ座標（中心はMM、大きさはLLの範囲）
+        l = C_lamp['MM'][i] - W_lamp['LL']
+        r = C_lamp['MM'][i] + W_lamp['LL']
+        t = T_lamp['subLL']
+        b = B_lamp['subLL']
+        TL = (l, t)
+        BR = (r, b)
+        # 一致率が大きい比較画像のインデックスを取得
+        index = iip.getMostMatchImage(frame, TL, BR, tmp_list,
+                                      threshold=thd, color_type='HSV')
         # インデックスを形名に反映
-        shape = ['ika', 'oct'][tmp_index]
+        shape = ['ika', 'oct'][index]
         # リストに記録
         shape_list[i] = shape
 
@@ -177,22 +190,22 @@ def getShape(frame, team_color):
 
 def readLampImage():
     ''' 主観視点の状態把握に使う画像読み込み '''
-    # イカ
+    # 各サイズ画像をリストで出力
     ika_list = []
     oct_list = []
-    crs_list = []
+    cross_list = []
     for size in size_list:
         # イカ
-        bin_tmp = cv2.imread('png\\lamp_ika_' + size + '.png', -1)
+        bin_tmp = cv2.imread('pbm\\lamp_ika_' + size + '.pbm', -1)
         ika_list.append(bin_tmp)
         # タコ
-        bin_tmp = cv2.imread('png\\lamp_oct_' + size + '.png', -1)
+        bin_tmp = cv2.imread('pbm\\lamp_oct_' + size + '.pbm', -1)
         oct_list.append(bin_tmp)
         # バツ印
-        bin_tmp = cv2.imread('png\\lamp_cross_' + size + '.png', -1)
-        crs_list.append(bin_tmp)
+        bin_tmp = cv2.imread('pbm\\lamp_cross_' + size + '.pbm', -1)
+        cross_list.append(bin_tmp)
 
-    return ika_list, oct_list, crs_list
+    return ika_list, oct_list, cross_list
 
 
 def getSizeSubjective(frame, team_color, lamp_list, cross_list):
