@@ -47,7 +47,7 @@ def listtop():
     return list_top
 
 
-def frame(frame):
+def forFrame(frame):
     ''' フレームに対しての一連の処理を行う '''
     # 確保状況
     control, location = getControl(frame)

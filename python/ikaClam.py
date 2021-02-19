@@ -48,7 +48,7 @@ def listtop():
     return list_top
 
 
-def frame(frame, team_color):
+def forFrame(frame, team_color):
     ''' フレームに対しての一連の処理を行う '''
     # 確保状況
     control = getControl(frame, team_color)

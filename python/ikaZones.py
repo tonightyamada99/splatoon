@@ -40,7 +40,7 @@ thd_hsv = {'blk':[(  0,   0,   0), (179, 255, 128)],
            'blu':[(125, 128, 128), (135, 255, 255)]}
 
 
-def listTop(zones_num):
+def listtop(zones_num):
     ''' 記録リストの先頭行を返す '''
     list_top = ['control', 'count_alfa', 'count_bravo',
                 'penalty_count_alfa', 'penalty_count_bravo',
@@ -51,7 +51,7 @@ def listTop(zones_num):
     return list_top
 
 
-def frame(frame, zones_num, team_color):
+def forFrame(frame, zones_num, team_color):
     ''' フレームに対しての一連の処理を行う '''
     # 確保状況
     control = getControl(frame, team_color)
@@ -232,15 +232,16 @@ def getRatio(frame, zones_num, team_color):
 def test():
     ''' 動作テスト '''
 
-    for i in range(35):
+    for i in range(1):
         img_path = 'capture_image\\image_obj_zones_' + str(i).zfill(2) + '.png'
+        img_path = 'frame.png'
         frame = cv2.imread(img_path)
 
         import ikaLamp
         team_color = ikaLamp.getTeamColor(frame)
 
-        zones_num = 1
-        data_list = frame(frame, zones_num, team_color)
+        zones_num = 2
+        data_list = getData(frame, zones_num, team_color)
 
         print('====================================')
         print(img_path)
