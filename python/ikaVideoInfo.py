@@ -15,14 +15,13 @@ import ikaStartEnd
 
 # 処理進捗メーター関連
 length_meter = 20
-meter_name = 'Match Status'
+meter_name = 'Infomation'
 
 # 視点指定のウィンドウ関連
 name_window = 'Select Viewpoint and Player Number'
 name_track_1 = 'Viewpoint'
 name_track_2 = 'User Num'
 width_window = 960
-
 
 
 def printMeter(now, all):
@@ -32,17 +31,15 @@ def printMeter(now, all):
     # テキスト作成
     meter = ('#' * round(length_meter*ratio)).ljust(length_meter, ' ')
     text = '\r{} [{}] {:.2f}% '.format(meter_name, meter, ratio*100)
-
     # テキスト表示（sysで上書き）
     sys.stdout.flush()
     sys.stdout.write(text)
 
 
-
 def selectViewpoint(frame):
     ''' 視点とプレイヤー位置を指定するウインドウを作る '''
     # 説明文画像
-    img_how = cv2.imread('jpg\\matchstatus_viewpoint.jpg')
+    img_how = cv2.imread('jpg\\videoinfo_viewpoint.jpg')
     H, W = img_how.shape[:2]
     scale = width_window / W
     rsz_how = cv2.resize(img_how, None, fx=scale, fy=scale)
@@ -90,20 +87,18 @@ def selectViewpoint(frame):
     return viewpoint, user_num
 
 
-
-def getStatus(video_path):
+def getinfo(video_path):
     ''' 試合動画の情報を取得する '''
-    # 出力先・名前の設定
+    # 動画の名前の取得
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     video_dir = os.path.dirname(video_path)
-
-    out_path = video_dir + '\\' + video_name + '_status.csv'
-
+    # 出力先
+    out_path = video_dir + '\\' + video_name + '_info.csv'
 
     # 取得状況の把握
-    if (os.path.exists(out_path)):
+    if os.path.exists(out_path):
         print('情報取得済み')
-        status_list = csvread.readAsList(out_path)
+        info_list = csvread.readAsList(out_path)
 
     else:
         # 動画読み込み
@@ -120,10 +115,9 @@ def getStatus(video_path):
         viewpoint   = 'nodata'
         user_num    = 0
 
-
         ### ここから動画処理 #################################################
         fcount = 0
-        while(video.isOpened()):
+        while video.isOpened():
             # フレーム取得
             ret, frame = video.read()
             # フレーム取得できなかったら終了
@@ -165,6 +159,11 @@ def getStatus(video_path):
                     # 視点の取得
                     # viewpoint, user_num = 'obj', 0
                     viewpoint, user_num = selectViewpoint(frame)
+                    # イカランプの形の取得
+                    if viewpoint == 'sub':
+                        shape_list = ikaLamp.getShape(frame, team_color)
+                    else:
+                        shape_list = ['nodata' for i in range(8)]
 
             elif frame_end == 0:
                 # 試合終了の判定
@@ -179,47 +178,44 @@ def getStatus(video_path):
         printMeter(frame_all, frame_all)
         ### ここまで動画処理 #################################################
 
-
-        # 記録用リスト
-        status_list = [['fps', 'frame_all', 'frame_start', 'frame_end',
-                        'viewpoint', 'rule', 'stage_num',
-                        'team_color_alfa', 'team_color_bravo', 'user_num'],
-                       [fps, frame_all, frame_start, frame_end,
-                        viewpoint, rule, stage_num] + team_color + [user_num]]
+        # リスト先頭行
+        list_top = ['fps', 'frame_all', 'frame_start', 'frame_end',
+                    'viewpoint', 'rule', 'stage_num',
+                    'team_color_alfa', 'team_color_bravo', 'user_num']
+        list_top += ['shape_' + str(i+1) for i in range(8)]
+        # リスト内容 contents
+        list_con = [fps, frame_all, frame_start, frame_end,
+                    viewpoint, rule, stage_num,
+                    team_color[0], team_color[1], user_num]
+        list_con += shape_list
+        # 出力リスト
+        info_list = [list_top, list_con]
 
         # CSV出力
         with open(out_path, 'w') as file:
             writer = csv.writer(file, lineterminator='\n')
-            writer.writerows(status_list)
+            writer.writerows(info_list)
 
-
-    return status_list
-
+    return info_list
 
 
 def main():
     ''' メイン処理 '''
     # ビデオディレクトリ取得 *はワイルドカード
-    fnames = glob.glob('.\\capture_movie\\movie*.avi' )
+    fnames = glob.glob('D:\\splatoon_movie\\capture\\video*.avi' )
 
     for video_path in fnames:
         print('==================================================')
         print(os.path.basename(video_path))
 
-        status_list = getStatus(video_path)
+        info_list = getinfo(video_path)
 
         print('--------------------------------------------------')
-        for idx in range(len(status_list[0])):
-            print(status_list[0][idx], status_list[1][idx])
-
+        for idx in range(len(info_list[0])):
+            print(info_list[0][idx], info_list[1][idx])
 
     print('==================================================')
 
 
-
 if __name__ == "__main__":
     main()
-
-
-
-
