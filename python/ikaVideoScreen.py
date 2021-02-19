@@ -29,8 +29,7 @@ bin_nice = cv2.imread('.\\pbm\\sign_nice.pbm', -1)
 
 # 処理進捗メーター関連
 length_meter = 20
-meter_name = 'Screen Status'
-
+meter_name = 'Screen'
 
 
 def judgeNice(frame):
@@ -44,7 +43,6 @@ def judgeNice(frame):
     return judge
 
 
-
 def printMeter(now, all):
     ''' 処理進捗をコマンドラインに表示する '''
     # 進捗を計算
@@ -52,23 +50,21 @@ def printMeter(now, all):
     # テキスト作成
     meter = ('#' * round(length_meter*ratio)).ljust(length_meter, ' ')
     text = '\r{} [{}] {:.2f}% '.format(meter_name, meter, ratio*100)
-
     # テキスト表示（sysで上書き）
     sys.stdout.flush()
     sys.stdout.write(text)
 
 
-
-def getScreenStatus(video_path):
+def getScreen(video_path):
     ''' 主観視点動画の画面状況を調べる '''
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     video_dir = os.path.dirname(video_path)
 
-    status_path = video_dir + '\\' + video_name + '_status.csv'
+    info_path = video_dir + '\\' + video_name + '_info.csv'
     out_path    = video_dir + '\\' + video_name + '_screen.csv'
 
-    if not (os.path.exists(status_path)):
-        print('動画情報ファイルが見つかりません。先にikaMatchStatus.pyを実行してください。')
+    if not os.path.exists(info_path):
+        print('動画情報ファイルが見つかりません。先にikaVideoInfo.pyを実行してください。')
 
     elif os.path.exists(out_path):
         print('画面情報取得済み')
@@ -79,17 +75,16 @@ def getScreenStatus(video_path):
         frame_all = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # 動画の情報を読み込む
-        status_dict = csvread.readAsDict(status_path)
-        frame_start = status_dict['frame_start']
-        frame_end   = status_dict['frame_end']
+        info_dict = csvread.readAsDict(info_path)
+        frame_start = info_dict['frame_start']
+        frame_end   = info_dict['frame_end']
 
         # 出力リスト
         screen_list = [['fcount', 'screen_map']]
 
-
         ### ここから動画処理 #################################################
         fcount = 0
-        while(video.isOpened()):
+        while video.isOpened():
 
             # フレーム取得
             ret, frame = video.read()
@@ -123,28 +118,23 @@ def getScreenStatus(video_path):
             writer = csv.writer(file, lineterminator='\n')
             writer.writerows(screen_list)
 
-
         return screen_list
-
 
 
 def main():
     ''' メイン処理 '''
     # ビデオディレクトリ取得 *はワイルドカード
-    fnames = glob.glob('.\\capture_movie\\movie*.avi' )
+    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub*.avi' )
 
     for video_path in fnames:
         print('==================================================')
         print(os.path.basename(video_path))
 
-        screen_list = getScreenStatus(video_path)
+        screen_list = getScreen(video_path)
 
     print('==================================================')
 
 
-
 if __name__ == '__main__':
     main()
-
-
 
