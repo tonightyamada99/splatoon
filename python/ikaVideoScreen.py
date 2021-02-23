@@ -29,7 +29,7 @@ bin_nice = cv2.imread('.\\pbm\\sign_nice.pbm', -1)
 
 # 処理進捗メーター関連
 length_meter = 20
-meter_name = 'Screen'
+meter_name = 'Screen'.ljust(12, ' ')
 
 
 def judgeNice(frame):
@@ -55,7 +55,7 @@ def printMeter(now, all):
     sys.stdout.write(text)
 
 
-def getScreen(video_path):
+def getScreen(video_path, overwrite=0):
     ''' 主観視点動画の画面状況を調べる '''
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     video_dir = os.path.dirname(video_path)
@@ -66,7 +66,7 @@ def getScreen(video_path):
     if not os.path.exists(info_path):
         print('動画情報ファイルが見つかりません。先にikaVideoInfo.pyを実行してください。')
 
-    elif os.path.exists(out_path):
+    elif os.path.exists(out_path) and overwrite==0:
         print('画面情報取得済み')
 
     else:
@@ -124,7 +124,7 @@ def getScreen(video_path):
 def main():
     ''' メイン処理 '''
     # ビデオディレクトリ取得 *はワイルドカード
-    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub*.avi' )
+    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_rain*.mp4' )
 
     for video_path in fnames:
         print('==================================================')

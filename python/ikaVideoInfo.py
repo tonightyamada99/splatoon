@@ -15,7 +15,7 @@ import ikaStartEnd
 
 # 処理進捗メーター関連
 length_meter = 20
-meter_name = 'Infomation'
+meter_name = 'Infomation'.ljust(12, ' ')
 
 # 視点指定のウィンドウ関連
 name_window = 'Select Viewpoint and Player Number'
@@ -87,7 +87,7 @@ def selectViewpoint(frame):
     return viewpoint, user_num
 
 
-def getinfo(video_path):
+def getinfo(video_path, overwrite=0):
     ''' 試合動画の情報を取得する '''
     # 動画の名前の取得
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
@@ -96,7 +96,7 @@ def getinfo(video_path):
     out_path = video_dir + '\\' + video_name + '_info.csv'
 
     # 取得状況の把握
-    if os.path.exists(out_path):
+    if os.path.exists(out_path) and overwrite==0:
         print('情報取得済み')
         info_list = csvread.readAsList(out_path)
 
@@ -202,17 +202,24 @@ def getinfo(video_path):
 def main():
     ''' メイン処理 '''
     # ビデオディレクトリ取得 *はワイルドカード
-    fnames = glob.glob('D:\\splatoon_movie\\capture\\video*.avi' )
+    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_zones_*.mp4' )
 
     for video_path in fnames:
         print('==================================================')
         print(os.path.basename(video_path))
 
-        info_list = getinfo(video_path)
+        info_list = getinfo(video_path, 1)
 
         print('--------------------------------------------------')
         for idx in range(len(info_list[0])):
             print(info_list[0][idx], info_list[1][idx])
+
+
+        import ikaVideoScreen
+        ikaVideoScreen.getScreen(video_path, 1)
+
+        import ikaVideoData
+        ikaVideoData.getData(video_path, 1)
 
     print('==================================================')
 
