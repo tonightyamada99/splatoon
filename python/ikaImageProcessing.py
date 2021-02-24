@@ -22,7 +22,6 @@ thd_hsv = {'blk':[(  0,   0,   0), (179, 255, 128)],
            'blu':[(125, 128, 128), (135, 255, 255)]}
 
 
-
 def convertThreshold(threshold, color_type='RGB'):
     ''' 型を判別して入力を色閾値に変換 '''
     # list型 -> そのまま返す
@@ -36,9 +35,7 @@ def convertThreshold(threshold, color_type='RGB'):
         elif color_type == 'HSV' or color_type == 'hsv':
             cvt_thd = thd_hsv[threshold]
 
-
     return cvt_thd
-
 
 
 def getMatchValue(template, image, pt1, pt2,
@@ -76,9 +73,7 @@ def getMatchValue(template, image, pt1, pt2,
     jug = cv2.matchTemplate(bin_trm, template, cv2.TM_CCORR_NORMED)
     minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)
 
-
     return maxVal
-
 
 
 def getMostLargeColor(image, pt1, pt2, color_list, mask='off'):
@@ -99,14 +94,14 @@ def getMostLargeColor(image, pt1, pt2, color_list, mask='off'):
 
     # 抽出された面積が最も大きい色を探す
     s_max = 0
-    color_max = 'nodata'
+    color_max = color_list[0]
     for color in color_list:
         # 閾値を取得
         thd_min, thd_max = convertThreshold(color, 'HSV')
         # 基準色で2値化
         bin_trm = cv2.inRange(hsv_trm, thd_min, thd_max)
         # マスク処理
-        if mask != 'off':
+        if type(mask) is np.ndarray:
             bin_trm = cv2.bitwise_and(bin_trm, mask)
         # 抽出された部分の面積を取得
         s = cv2.countNonZero(bin_trm)
@@ -115,9 +110,7 @@ def getMostLargeColor(image, pt1, pt2, color_list, mask='off'):
             s_max = s
             color_max = color
 
-
     return color_max
-
 
 
 def getMostMatchImage(image, pt1, pt2, tmp_list,
@@ -158,9 +151,7 @@ def getMostMatchImage(image, pt1, pt2, tmp_list,
             val_max = maxVal
             index = i
 
-
     return index
-
 
 
 def getNumber(image, pt1, pt2, image_num,
@@ -224,8 +215,8 @@ def getNumber(image, pt1, pt2, image_num,
         w = stats[index][2]
         h = stats[index][3]
 
-        # 高さが小さいものは小数点やノイズ
-        if h > h_min*0.9:
+        # 大きさが数字からかけ離れているものはノイズ
+        if h_min*0.8 < h < h_max*1.1 and w_min*0.8 < w < w_max*1.1:
             # 対象を切り取り
             bin_tmp = bin_trm[y:y+h, x:x+w]
 
@@ -237,8 +228,10 @@ def getNumber(image, pt1, pt2, image_num,
 
             # 対象を黒画像に貼り付け target
             # 数字ごとの大きさの違いに対応するため
-            bin_tgt = np.zeros((h_max+2, w_max+2), dtype=np.uint8)
-            bin_tgt[1:1+h, 1:1+w] = bin_tmp
+            margin = round(h_max*0.1)
+            size = (h_max + margin*2, w_max + margin*2)
+            bin_tgt = np.zeros(size, dtype=np.uint8)
+            bin_tgt[margin:margin+h, margin:margin+w] = bin_tmp
 
             # 対象の数字を判別する
             num_tgt = 0
@@ -260,7 +253,6 @@ def getNumber(image, pt1, pt2, image_num,
 
     # 記録リストをx座標の大きい順（下の桁から上へ）にソート
     num_list.sort(key=lambda x: x[1], reverse=True)
-
     # ソートしたリストを数字に変換
     # 桁の小さい順に並んでいるので(数字)×10^(インデックス)で変換できる
     number = 0
@@ -268,19 +260,12 @@ def getNumber(image, pt1, pt2, image_num,
         place = 10 ** i     # 桁:place
         number += num * place
 
-
     return number
-
 
 
 def test():
     ''' 動作テスト '''
 
 
-
 if __name__ == "__main__":
     test()
-
-
-
-
