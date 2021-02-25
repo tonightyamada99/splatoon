@@ -6,6 +6,7 @@
 ####################################
 
 import cv2
+import sys
 import numpy as np
 
 
@@ -20,6 +21,10 @@ thd_hsv = {'blk':[(  0,   0,   0), (179, 255, 128)],
            'spw':[(  0,  16, 128), (179, 128, 255)],    # スペシャル状態
            'yel':[( 20, 128, 128), ( 30, 255, 255)],
            'blu':[(125, 128, 128), (135, 255, 255)]}
+
+# 処理進捗メーター関連
+length_name  = 12
+length_meter = 20
 
 
 def convertThreshold(threshold, color_type='RGB'):
@@ -261,6 +266,23 @@ def getNumber(image, pt1, pt2, image_num,
         number += num * place
 
     return number
+
+
+def printMeter(name, now, all):
+    ''' 動画の処理進捗をコマンドラインに表示する '''
+    # 進捗を計算
+    ratio = now / all
+    # 最初は\nで改行、以降は\rで上書き
+    head = '\n' if now == 1 else '\r'
+    # 名前に文字数分の余白をつける
+    name = name.ljust(length_name, ' ')
+    # メーター作成
+    meter = ('#' * round(length_meter*ratio)).ljust(length_meter, ' ')
+    # 表示テキストを作成
+    text = '{}{}[{}] {:.2f}% '.format(head, name, meter, ratio*100)
+    # テキスト表示
+    sys.stdout.flush()
+    sys.stdout.write(text)
 
 
 def test():
