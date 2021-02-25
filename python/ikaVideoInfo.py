@@ -11,29 +11,16 @@ import ikaLamp
 import ikaRule
 import ikaStage
 import ikaStartEnd
+import ikaImageProcessing as iip
 
-
-# 処理進捗メーター関連
-length_meter = 20
-meter_name = 'Infomation'.ljust(12, ' ')
+# 処理メーターの名前
+meter_name = 'Infomation'
 
 # 視点指定のウィンドウ関連
 name_window = 'Select Viewpoint and Player Number'
 name_track_1 = 'Viewpoint'
 name_track_2 = 'User Num'
 width_window = 960
-
-
-def printMeter(now, all):
-    ''' 処理進捗をコマンドラインに表示する '''
-    # 進捗を計算
-    ratio = now / all
-    # テキスト作成
-    meter = ('#' * round(length_meter*ratio)).ljust(length_meter, ' ')
-    text = '\r{} [{}] {:.2f}% '.format(meter_name, meter, ratio*100)
-    # テキスト表示（sysで上書き）
-    sys.stdout.flush()
-    sys.stdout.write(text)
 
 
 def selectViewpoint(frame):
@@ -61,13 +48,12 @@ def selectViewpoint(frame):
         pass
 
     # トラックバーを生成
-    cv2.createTrackbar(name_track_1, name_window, 0, 1, nothing)
+    cv2.createTrackbar(name_track_1, name_window, 1, 1, nothing)
     cv2.createTrackbar(name_track_2, name_window, 1, 4, nothing)
 
     # ESCが押されるまでループ
     while True:
         k = cv2.waitKey()
-
         if k == 27:
             # トラックバーの値を取得
             vp_num   = cv2.getTrackbarPos(name_track_1, name_window)
@@ -82,7 +68,6 @@ def selectViewpoint(frame):
             # 終了
             cv2.destroyAllWindows()
             break
-
 
     return viewpoint, user_num
 
@@ -127,7 +112,7 @@ def getinfo(video_path, overwrite=0):
             # フレームカウント
             fcount += 1
             # 処理進捗をコマンドラインに表示
-            printMeter(fcount, frame_all)
+            iip.printMeter(meter_name, fcount, frame_all)
 
             if frame_rule == 0:
                 # ルール表示の判定
@@ -175,7 +160,7 @@ def getinfo(video_path, overwrite=0):
                 break
 
         video.release
-        printMeter(frame_all, frame_all)
+        iip.printMeter(meter_name, frame_all, frame_all)
         ### ここまで動画処理 #################################################
 
         # リスト先頭行
@@ -202,17 +187,17 @@ def getinfo(video_path, overwrite=0):
 def main():
     ''' メイン処理 '''
     # ビデオディレクトリ取得 *はワイルドカード
-    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_zones_*.mp4' )
+    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_rain_*.avi' )
 
+    sys.stdout.write('=' * 50)
     for video_path in fnames:
-        print('==================================================')
-        print(os.path.basename(video_path))
+        sys.stdout.write('\n' + os.path.basename(video_path))
 
         info_list = getinfo(video_path, 1)
 
-        print('--------------------------------------------------')
-        for idx in range(len(info_list[0])):
-            print(info_list[0][idx], info_list[1][idx])
+        # print('--------------------------------------------------')
+        # for idx in range(len(info_list[0])):
+        #     print(info_list[0][idx], info_list[1][idx])
 
 
         import ikaVideoScreen
@@ -221,7 +206,7 @@ def main():
         import ikaVideoData
         ikaVideoData.getData(video_path, 1)
 
-    print('==================================================')
+        sys.stdout.write('\n' + '=' * 50)
 
 
 if __name__ == "__main__":

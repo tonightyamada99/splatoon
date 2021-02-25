@@ -16,20 +16,15 @@ TLBR_size = (1920, 1080)    # FHD
 # ナイス
 TL_nice = ( 68, 1016)
 BR_nice = (132, 1048)
-
-# 閾値 threshold
-# 一致率
+# 一致率の閾値 threshold
 thd_val = 0.9
-
 # RGB[min, max](0~255, 0~255, 0~255)
 thd_rgb = {'sgn':[(192, 192, 192), (255, 255, 255)]}
-
 # ナイス画像
 bin_nice = cv2.imread('.\\pbm\\sign_nice.pbm', -1)
 
 # 処理進捗メーター関連
-length_meter = 20
-meter_name = 'Screen'.ljust(12, ' ')
+meter_name = 'Screen'
 
 
 def judgeNice(frame):
@@ -43,32 +38,20 @@ def judgeNice(frame):
     return judge
 
 
-def printMeter(now, all):
-    ''' 処理進捗をコマンドラインに表示する '''
-    # 進捗を計算
-    ratio = now / all
-    # テキスト作成
-    meter = ('#' * round(length_meter*ratio)).ljust(length_meter, ' ')
-    text = '\r{} [{}] {:.2f}% '.format(meter_name, meter, ratio*100)
-    # テキスト表示（sysで上書き）
-    sys.stdout.flush()
-    sys.stdout.write(text)
-
-
 def getScreen(video_path, overwrite=0):
     ''' 主観視点動画の画面状況を調べる '''
+    # 動画の名前の取得
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     video_dir = os.path.dirname(video_path)
-
+    # 読み込みファイル
     info_path = video_dir + '\\' + video_name + '_info.csv'
-    out_path    = video_dir + '\\' + video_name + '_screen.csv'
+    # 出力先
+    out_path  = video_dir + '\\' + video_name + '_screen.csv'
 
     if not os.path.exists(info_path):
         print('動画情報ファイルが見つかりません。先にikaVideoInfo.pyを実行してください。')
-
     elif os.path.exists(out_path) and overwrite==0:
         print('画面情報取得済み')
-
     else:
         # 動画読み込み
         video = cv2.VideoCapture(video_path)
@@ -84,6 +67,8 @@ def getScreen(video_path, overwrite=0):
 
         ### ここから動画処理 #################################################
         fcount = 0
+        sys.stdout.flush()
+        sys.stdout.write('')
         while video.isOpened():
 
             # フレーム取得
@@ -95,7 +80,7 @@ def getScreen(video_path, overwrite=0):
             # フレームカウント
             fcount += 1
             # 処理進捗をコマンドラインに表示
-            printMeter(fcount, frame_all)
+            iip.printMeter(meter_name, fcount, frame_all)
 
             # 試合中のフレームを対象
             if frame_start <= fcount < frame_end:
@@ -110,7 +95,7 @@ def getScreen(video_path, overwrite=0):
                 break
 
         video.release
-        printMeter(frame_all, frame_all)
+        iip.printMeter(meter_name, frame_all, frame_all)
         ### ここまで動画処理 #################################################
 
         # CSV出力
@@ -126,13 +111,13 @@ def main():
     # ビデオディレクトリ取得 *はワイルドカード
     fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_rain*.mp4' )
 
+    sys.stdout.write('=' * 50)
     for video_path in fnames:
-        print('==================================================')
-        print(os.path.basename(video_path))
+        sys.stdout.write('\n' + os.path.basename(video_path))
 
         screen_list = getScreen(video_path)
 
-    print('==================================================')
+        sys.stdout.write('\n' + '=' * 30)
 
 
 if __name__ == '__main__':

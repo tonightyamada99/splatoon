@@ -12,24 +12,11 @@ import ikaZones
 import ikaTower
 import ikaRainmaker
 import ikaClam
+import ikaImageProcessing as iip
 
 
 # 処理進捗メーター関連
-length_meter = 20
-meter_name = 'Data'.ljust(12, ' ')
-
-
-
-def printMeter(now, all):
-    ''' 処理進捗をコマンドラインに表示する '''
-    # 進捗を計算
-    ratio = now / all
-    # テキスト作成
-    meter = ('#' * round(length_meter*ratio)).ljust(length_meter, ' ')
-    text = '\r{} [{}] {:.2f}% '.format(meter_name, meter, ratio*100)
-    # テキスト表示（sysで上書き）
-    sys.stdout.flush()
-    sys.stdout.write(text)
+meter_name = 'Data'
 
 
 def getData(video_path, overwrite=0):
@@ -38,10 +25,10 @@ def getData(video_path, overwrite=0):
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     video_dir = os.path.dirname(video_path)
     # 読み込みファイル
-    info_path = video_dir + '\\' + video_name + '_info.csv'
+    info_path   = video_dir + '\\' + video_name + '_info.csv'
     # 出力先
     status_path = video_dir + '\\' + video_name + '_status.csv'
-    count_path = video_dir + '\\' + video_name + '_count.csv'
+    count_path  = video_dir + '\\' + video_name + '_count.csv'
 
     if not os.path.exists(info_path):
         print('動画情報ファイルが見つかりません。')
@@ -95,6 +82,8 @@ def forObjective(video_path, info_dict):
 
     ### ここから動画処理 #####################################################
     fcount = 0
+    sys.stdout.flush()
+    sys.stdout.write('')
     while video.isOpened():
         # フレーム取得
         ret, frame = video.read()
@@ -105,7 +94,7 @@ def forObjective(video_path, info_dict):
         # フレームカウント
         fcount += 1
         # 処理進捗をコマンドラインに表示
-        printMeter(fcount, frame_all)
+        iip.printMeter(meter_name, fcount, frame_all)
 
         # 試合中のフレームが対象
         if frame_start <= fcount < frame_end:
@@ -132,7 +121,7 @@ def forObjective(video_path, info_dict):
             break
 
     video.release
-    printMeter(frame_all, frame_all)
+    iip.printMeter(meter_name, frame_all, frame_all)
     ### ここまで動画処理 #####################################################
 
     return status_list, count_list
@@ -172,6 +161,8 @@ def forSubjective(video_path, info_dict):
 
     ### ここから動画処理 #####################################################
     fcount = 0
+    sys.stdout.flush()
+    sys.stdout.write('')
     while video.isOpened():
         # フレーム取得
         ret, frame = video.read()
@@ -182,7 +173,7 @@ def forSubjective(video_path, info_dict):
         # フレームカウント
         fcount += 1
         # 処理進捗をコマンドラインに表示
-        printMeter(fcount, frame_all)
+        iip.printMeter(meter_name, fcount, frame_all)
 
         # 試合中のフレームが対象
         if frame_start <= fcount < frame_end:
@@ -214,7 +205,7 @@ def forSubjective(video_path, info_dict):
             break
 
     video.release
-    printMeter(frame_all, frame_all)
+    iip.printMeter(meter_name, frame_all, frame_all)
     ### ここまで動画処理 #####################################################
 
     return status_list, count_list
@@ -273,13 +264,13 @@ def main():
     # ビデオディレクトリ取得 *はワイルドカード
     fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_rain*.mp4' )
 
+    sys.stdout.write('=' * 50)
     for video_path in fnames:
-        print('==================================================')
-        print(os.path.basename(video_path))
+        sys.stdout.write('\n' + os.path.basename(video_path))
 
         getData(video_path)
 
-    print('==================================================')
+        sys.stdout.write('\n' + '=' * 30)
 
 
 if __name__ == "__main__":
