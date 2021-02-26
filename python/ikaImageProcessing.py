@@ -279,7 +279,7 @@ def printMeter(name, now, all):
     # メーター作成
     meter = ('#' * round(length_meter*ratio)).ljust(length_meter, ' ')
     # 表示テキストを作成
-    text = '{}{}[{}] {:.2f}% '.format(head, name, meter, ratio*100)
+    text = '{}{}[{}] {}/{}'.format(head, name, meter, now, all)
     # テキスト表示
     sys.stdout.flush()
     sys.stdout.write(text)
