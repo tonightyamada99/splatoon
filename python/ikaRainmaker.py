@@ -20,7 +20,7 @@ TL_mtr = ( 490, 140)
 BR_mtr = (1430, 168)
 # 位置表示の左右端
 L_end =  514
-R_end = 1405
+R_end = 1406
 # カウントのこり
 T_rmn = 202
 B_rmn = 218
@@ -38,6 +38,27 @@ width_count = 64
 # 色閾値 threshold
 # RGB[min, max](0~255, 0~255, 0~255)
 thd_rgb = {'wht':[(128, 128, 128), (255, 255, 255)]}
+
+# 位置アイコン画像
+image_icn = []
+for name in ['neutral', 'alfa', 'bravo']:
+    bin_icn = cv2.imread('.\\pbm\\tower_meter_' + name + '.pbm', -1)
+    image_icn.append(bin_icn)
+
+# 「のこり」画像
+image_rmn = []
+for ab in ['alfa', 'bravo']:
+    bin_rmn = cv2.imread('.\\pbm\\tower_remaining_' + ab + '.pbm', -1)
+    image_rmn.append(bin_rmn)
+
+# 数字画像
+image_act = []  # アルファ
+image_bct = []  # ブラボー
+for num in range(10):
+    bin_num = cv2.imread('.\\pbm\\tower_alfa_' + str(num) + '.pbm', -1)
+    image_act.append(bin_num)
+    bin_num = cv2.imread('.\\pbm\\tower_bravo_' + str(num) + '.pbm', -1)
+    image_bct.append(bin_num)
 
 
 def listtop():
@@ -75,11 +96,11 @@ def getControl(frame):
     # アイコンの位置も取得する
     val_meter = 0
     loc_meter = 0
-    for i, name in enumerate(['neutral', 'alfa', 'bravo']):
-        # アイコン画像読み込み
-        bin_tmp = cv2.imread('.\\pbm\\tower_meter_' + name + '.pbm', -1)
+    for i  in range(3):
+        # アイコン画像
+        bin_icn = image_icn[i]
         # 一致率と位置を算出
-        jug = cv2.matchTemplate(bin_trm, bin_tmp, cv2.TM_CCOEFF_NORMED)
+        jug = cv2.matchTemplate(bin_trm, bin_icn, cv2.TM_CCOEFF_NORMED)
         minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)
 
         # 一致率を比較
@@ -87,7 +108,7 @@ def getControl(frame):
             val_meter = maxVal
 
             # 記録する座標はアイコンの中心
-            width = bin_tmp.shape[1]
+            width = bin_icn.shape[1]
             loc_meter = round(TL_mtr[0] + maxLoc[0] + width / 2)
             # 確保状況 == インデックス
             control = i
@@ -107,8 +128,6 @@ def getCount(frame):
 
     # アルファとブラボー
     for i in range(2):
-        ab = ['alfa', 'bravo'][i]
-
         # 「のこり」部分の切り取り
         t = T_rmn
         b = B_rmn
@@ -117,61 +136,27 @@ def getCount(frame):
         img_trm = frame[t:b, l:r]
         # 白で二値化
         bin_trm = cv2.inRange(img_trm, thd_rgb['wht'][0], thd_rgb['wht'][1])
-
-        # 「のこり」画像読み込み
-        bin_tmp = cv2.imread('.\\pbm\\tower_remaining_' + ab + '.pbm', -1)
+        # 「のこり」画像
+        bin_rmn = image_rmn[i]
         # 一致率と位置を算出
-        jug = cv2.matchTemplate(bin_trm, bin_tmp, cv2.TM_CCOEFF_NORMED)
+        jug = cv2.matchTemplate(bin_trm, bin_rmn, cv2.TM_CCOEFF_NORMED)
         minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(jug)
 
         # 表示が重なってカウントが見えない場合があるので閾値を設ける
         if maxVal > thd_rmn:
-            # 「のこり」の位置から数字の左右位置を算出
-            width_rmn = bin_tmp.shape[1]
+             # 「のこり」の位置から数字の左右位置を算出
+            width_rmn = bin_rmn.shape[1]
             center = L_rmn[i] + maxLoc[0] + width_rmn / 2
             left  = round(center - width_count / 2)
             right = round(center + width_count / 2)
             # カウント座標
             TL = (left,  T_cnt)
             BR = (right, B_cnt)
-
-            # 数字画像読み込み
-            image_num = []
-            for num in range(10):
-                num_path = '.\\pbm\\tower_' + ab + '_' + str(num) + '.pbm'
-                bin_num = cv2.imread(num_path, -1)
-                image_num.append(bin_num)
-
+            # 数字画像
+            image_num = image_act if i == 0 else image_bct
             # カウント数字取得
             count = iip.getNumber(frame, TL, BR, image_num)
             # リストに記録
             count_list[i] = count
 
     return count_list
-
-
-def test():
-    ''' 動作テスト '''
-
-    for i in range(20):
-        img_path = 'capture_image\\image_obj_rain_' + str(i).zfill(2) + '.png'
-        frame = cv2.imread(img_path)
-
-        data_list = getData(frame)
-
-        print('====================================')
-        print(img_path)
-        print('control ', data_list[0])
-        print('location', data_list[1])
-        print('count   ', data_list[2], data_list[3])
-
-        # プレビュー
-        scale = 0.5
-        img_rsz = cv2.resize(frame, None, fx=scale, fy=scale)
-        cv2.imshow('Preview', img_rsz)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    test()

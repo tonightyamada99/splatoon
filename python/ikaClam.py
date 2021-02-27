@@ -38,6 +38,21 @@ size_pls = [18, 23]     # @FHD(1920, 1080)
 thd_rgb = {'blk':[(  0,   0,   0), ( 64,  64,  64)],
            'wht':[(192, 192, 192), (255, 255, 255)]}
 
+# カウント/アサリ数字画像
+image_act = []  # アルファ
+image_bct = []  # ブラボー
+image_pct = []  # ペナルティ
+image_clm = []  # アサリ
+for num in range(10):
+    bin_num = cv2.imread('.\\pbm\\zones_alfa_' + str(num) + '.pbm', -1)
+    image_act.append(bin_num)
+    bin_num = cv2.imread('.\\pbm\\zones_bravo_' + str(num) + '.pbm', -1)
+    image_bct.append(bin_num)
+    bin_num = cv2.imread('.\\pbm\\zones_pena_' + str(num) + '.pbm', -1)
+    image_pct.append(bin_num)
+    bin_num = cv2.imread('.\\pbm\\clam_' + str(num) + '.pbm', -1)
+    image_clm.append(bin_num)
+
 
 def listtop():
     ''' 記録リストの先頭行を返す '''
@@ -95,15 +110,8 @@ def getCount(frame, team_color, control):
 
     # アルファとブラボー
     for i in range(2):
-        ab = ['alfa', 'bravo'][i]
-
-        # 数字画像読み込み
-        image_num = []
-        for num in range(10):
-            num_path = '.\\pbm\\zones_' + ab + '_' + str(num) + '.pbm'
-            bin_num = cv2.imread(num_path, -1)
-            image_num.append(bin_num)
-
+        # 数字画像
+        image_num = image_act if i == 0 else image_bct
         # 数字の色は通常はチームカラー、確保中は白
         color = team_color[i] if control != i+1 else 'wht'
         # カウント表示位置
@@ -111,8 +119,7 @@ def getCount(frame, team_color, control):
         BR = (R_cnt[i], B_cnt[1])
         # カウント数字取得
         count = iip.getNumber(frame, TL, BR, image_num,
-                              threshold=color, color_type='HSV',resize='on')
-
+                              threshold=color, color_type='HSV', resize='on')
         # リストに記録
         count_list[i] = count
 
@@ -162,20 +169,12 @@ def getPenaltyCount(frame, jug_pena):
     for i in range(2):
         # ペナルティカウントがあれば
         if jug_pena[i]:
-
-            # 数字画像読み込み
-            image_num = []
-            for num in range(10):
-                num_path = '.\\pbm\\zones_pena_' + str(num) + '.pbm'
-                bin_num = cv2.imread(num_path, -1)
-                image_num.append(bin_num)
-
             # ペナルティカウント表示位置
             TL = TL_pct[i]
             BR = BR_pct[i]
             # カウント数字取得
             color = thd_rgb['wht']
-            count = iip.getNumber(frame, TL, BR, image_num,
+            count = iip.getNumber(frame, TL, BR, image_pct,
                                   threshold=color, resize='on')
             # リストに記録
             pcount_list[i] = count
@@ -188,14 +187,8 @@ def getClam(frame):
     # 記録リスト
     clam_list = [0, 0]
 
-    # 数字画像読み込み
-    image_num = []
-    for num in range(10):
-        num_path = '.\\pbm\\clam_' + str(num) + '.pbm'
-        bin_num = cv2.imread(num_path, -1)
-        image_num.append(bin_num)
-
     # 数字の高さと幅の最大最小を取得
+    image_num = image_clm
     h_list = [image_num[i].shape[0] for i in range(10)]
     w_list = [image_num[i].shape[1] for i in range(10)]
     h_max, h_min = max(h_list), min(h_list)
@@ -280,37 +273,3 @@ def getClam(frame):
         clam_list[i] = number
 
     return clam_list
-
-
-def test():
-    ''' 動作テスト '''
-
-    for i in range(34):
-        img_path = 'capture_image\\image_obj_clam_' + str(i).zfill(2) + '.png'
-        frame = cv2.imread(img_path)
-
-        print('====================================')
-        print(img_path)
-
-        import ikaLamp
-        team_color = ikaLamp.getTeamColor(frame)
-
-        data_list = frame(frame, team_color)
-
-        print('====================================')
-        print(img_path)
-        print('control', data_list[0])
-        print('count  ', data_list[1], data_list[2])
-        print('pcount ', data_list[3], data_list[4])
-        print('clam num', round(data_list[5], 3), round(data_list[6], 3))
-
-        # プレビュー
-        scale = 0.5
-        img_rsz = cv2.resize(frame, None, fx=scale, fy=scale)
-        cv2.imshow('Preview', img_rsz)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    test()

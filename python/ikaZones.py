@@ -9,7 +9,7 @@ import ikaImageProcessing as iip
 # 設定サイズ
 TLBR_size = (1920, 1080)    # FHD
 # カウント表示 count window
-T_cnt = [134, 154]  # [表示, 数字]
+T_cnt = [134, 154]  # [表示全体, 数字部分]
 B_cnt = [208, 208]
 L_cnt = [804, 1026] # [アルファ, ブラボー]
 R_cnt = [894, 1116]
@@ -39,6 +39,18 @@ thd_hsv = {'blk':[(  0,   0,   0), (179, 255, 128)],
            'yel':[( 20, 128, 128), ( 30, 255, 255)],
            'blu':[(125, 128, 128), (135, 255, 255)]}
 
+# 数字画像
+image_act = []  # アルファ
+image_bct = []  # ブラボー
+image_pct = []  # ペナルティ
+for num in range(10):
+    bin_num = cv2.imread('.\\pbm\\zones_alfa_' + str(num) + '.pbm', -1)
+    image_act.append(bin_num)
+    bin_num = cv2.imread('.\\pbm\\zones_bravo_' + str(num) + '.pbm', -1)
+    image_bct.append(bin_num)
+    bin_num = cv2.imread('.\\pbm\\zones_pena_' + str(num) + '.pbm', -1)
+    image_pct.append(bin_num)
+
 
 def listtop(zones_num):
     ''' 記録リストの先頭行を返す '''
@@ -47,7 +59,6 @@ def listtop(zones_num):
                 'ratio_1_alfa', 'ratio_1_bravo']
     if zones_num == 2:
         list_top += ['ratio_2_alfa', 'ratio_2_bravo']
-
     return list_top
 
 
@@ -97,15 +108,8 @@ def getCount(frame, team_color, control):
 
     # アルファとブラボー
     for i in range(2):
-        ab = ['alfa', 'bravo'][i]
-
-        # 数字画像読み込み
-        image_num = []
-        for num in range(10):
-            num_path = '.\\pbm\\zones_' + ab + '_' + str(num) + '.pbm'
-            bin_num = cv2.imread(num_path, -1)
-            image_num.append(bin_num)
-
+        # 数字画像
+        image_num = image_act if i == 0 else image_bct
         # 数字の色は通常はチームカラー、確保中は白
         color = team_color[i] if control != i+1 else 'wht'
         # カウント表示位置
@@ -162,20 +166,12 @@ def getPenaltyCount(frame, jug_pena):
     for i in range(2):
         # ペナルティカウントがあれば
         if jug_pena[i]:
-
-            # 数字画像読み込み
-            image_num = []
-            for num in range(10):
-                num_path = '.\\pbm\\zones_pena_' + str(num) + '.pbm'
-                bin_num = cv2.imread(num_path, -1)
-                image_num.append(bin_num)
-
             # ペナルティカウント表示位置
             TL = TL_pct[i]
             BR = BR_pct[i]
             # カウント数字取得
             color = thd_rgb['wht']
-            count = iip.getNumber(frame, TL, BR, image_num,
+            count = iip.getNumber(frame, TL, BR, image_pct,
                                   threshold=color, resize='on')
             # リストに記録
             pcount_list[i] = count
@@ -227,38 +223,3 @@ def getRatio(frame, zones_num, team_color):
             ratio_list += [0, 0]
 
     return ratio_list
-
-
-def test():
-    ''' 動作テスト '''
-
-    for i in range(1):
-        img_path = 'capture_image\\image_obj_zones_' + str(i).zfill(2) + '.png'
-        img_path = 'frame.png'
-        frame = cv2.imread(img_path)
-
-        import ikaLamp
-        team_color = ikaLamp.getTeamColor(frame)
-
-        zones_num = 2
-        data_list = getData(frame, zones_num, team_color)
-
-        print('====================================')
-        print(img_path)
-        print('control', data_list[0])
-        print('count  ', data_list[1], data_list[2])
-        print('pcount ', data_list[3], data_list[4])
-        print('ratio1 ', round(data_list[5], 3), round(data_list[6], 3))
-        if zones_num == 2:
-            print('ratio1 ', round(data_list[7], 3), round(data_list[8], 3))
-
-        # プレビュー
-        scale = 0.5
-        img_rsz = cv2.resize(frame, None, fx=scale, fy=scale)
-        cv2.imshow('Preview', img_rsz)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    test()
