@@ -24,65 +24,33 @@ bin_259 = cv2.imread('.\\pbm\\time_259.pbm', -1)
 bin_459 = cv2.imread('.\\pbm\\time_459.pbm', -1)
 # 試合終了
 bin_fin = cv2.imread('.\\pbm\\time_fin.pbm', -1)
-    
 
 
 def judgeStartTurf(frame):
     ''' ナワバリ試合開始の判定 '''
-    # 「2:59」との一致率算出  
+    # 「2:59」との一致率算出
     val = iip.getMatchValue(bin_259, frame, TL_tim, BR_tim)
     # 閾値以上ならば試合開始
     judge = True if val > thd_val else False
-    
-    return judge
 
+    return judge
 
 
 def judgeStartGachi(frame):
     ''' ガチルール試合開始の判定 '''
-    # 「4:59」との一致率算出  
+    # 「4:59」との一致率算出
     val = iip.getMatchValue(bin_459, frame, TL_tim, BR_tim)
     # 閾値以上ならば試合開始
     judge = True if val > thd_val else False
-    
-    return judge
 
+    return judge
 
 
 def judgeEnd(frame):
     ''' 試合終了の判定 '''
     # 「FINISH」との一致率算出 ※基準色は黒
     val = iip.getMatchValue(bin_fin, frame, TL_fin, BR_fin, 'blk')
-    # 閾値以上ならば試合開始
+    # 閾値以上ならば試合終了
     judge = True if val > thd_val else False
-    
+
     return judge
-    
-
-
-def test():
-    ''' 動作テスト '''   
-    img_path = '.\\capture_image\\image_sub_turf_1.png'
-    frame = cv2.imread(img_path)
-    jug = judgeStartTurf(frame)
-    
-    # img_path = '.\\capture_image\\image_finish_1.png'
-    # frame = cv2.imread(img_path)
-    # jug = judgeEnd(frame)
-    
-    print(jug)
-
-    # プレビュー
-    scale = 0.5
-    img_rsz = cv2.resize(frame, None, fx=scale, fy=scale)
-         
-    cv2.imshow('Preview', img_rsz)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    
-
-if __name__ == "__main__":    
-    test()
- 
-
