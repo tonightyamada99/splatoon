@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-import glob
 import numpy as np
-
 import ikaImageProcessing as iip
 
 
@@ -82,29 +80,24 @@ thd_hsv = {'blk':[(  0,   0,   0), (179,  64, 128)],    # 黒
 # チームカラー候補
 color_catalog = ['yel', 'blu']
 
-# 比較画像
-# バツ印:cross  味方:good guys  相手:bad guys
-bin_ggc = cv2.imread('.\\pbm\\map_gg_cross.pbm', -1)
-bin_bgc = cv2.imread('.\\pbm\\map_bg_cross.pbm', -1)
-# スペシャル状態:special weapon
-bin_ggs = cv2.imread('.\\pbm\\map_gg_spw.pbm', -1)
-bin_bgs = cv2.imread('.\\pbm\\map_bg_spw.pbm', -1)
-# 比較画像リスト
-bin_crs  = [bin_ggc, bin_bgc]
-bin_spw  = [bin_ggs, bin_bgs]
+# マップ画面の状態画像
+bin_crs = []    # バツ印
+bin_spw = []    # スペシャル状態
+for team in ['gg', 'bg']:   # 味方:good guys  相手:bad guys
+    bin_tmp = cv2.imread('.\\pbm\\map_' + team +'_cross.pbm', -1)
+    bin_crs.append(bin_tmp)
+    bin_tmp = cv2.imread('.\\pbm\\map_' + team +'_spw.pbm', -1)
+    bin_spw.append(bin_tmp)
 
-# 各サイズのランプ画像をリスト化
-ika_list = []
-oct_list = []
-cross_list = []
+# 各サイズのランプ画像
+ika_list = []   # イカ
+oct_list = []   # タコ
+cross_list = [] # バツ印
 for size in size_list:
-    # イカ
     bin_tmp = cv2.imread('pbm\\lamp_ika_' + size + '.pbm', -1)
     ika_list.append(bin_tmp)
-    # タコ
     bin_tmp = cv2.imread('pbm\\lamp_oct_' + size + '.pbm', -1)
     oct_list.append(bin_tmp)
-    # バツ印
     bin_tmp = cv2.imread('pbm\\lamp_cross_' + size + '.pbm', -1)
     cross_list.append(bin_tmp)
 
@@ -121,9 +114,9 @@ def forFrameObjective(frame, team_color):
     # ランプの大きさ
     lamp_size = getSizeObjective(frame)
     # 生存状況
-    lamp_list = getStatusObjective(frame, team_color, lamp_size)
+    status_list = getStatusObjective(frame, team_color, lamp_size)
 
-    return lamp_list
+    return status_list
 
 
 def forFrameSubjective(frame, team_color, shape_list):
@@ -131,9 +124,9 @@ def forFrameSubjective(frame, team_color, shape_list):
     # ランプの大きさ
     lamp_size = getSizeSubjective(frame, team_color, shape_list)
     # 生存状況
-    lamp_list = getStatusSubjective(frame, team_color, shape_list, lamp_size)
+    status_list = getStatusSubjective(frame, team_color, shape_list, lamp_size)
 
-    return lamp_list
+    return status_list
 
 
 def getClosestIndex(list, num):
@@ -267,7 +260,7 @@ def getSizeSubjective(frame, team_color, shape_list):
         # 抽出された部分の面積を取得
         s = cv2.countNonZero(msk_trm)
 
-        if s > s_max:
+        if s >= s_max:
             s_max = s
             color_max = color
             bin_max = bin_trm
@@ -300,7 +293,7 @@ def getSizeSubjective(frame, team_color, shape_list):
 def getStatusObjective(frame, team_color, lamp_size):
     ''' 俯瞰視点：イカランプの状態を取得する '''
     # 記録リスト 0:dead  1:alive  2:sp
-    lamp_list = ['nodata' for i in range(8)]
+    status_list = ['nodata' for i in range(8)]
 
     # 基準色リスト [黒, チームカラー, スペシャル状態]
     lamp_color = [['blk', color, 'spw'] for color in team_color]
@@ -321,15 +314,15 @@ def getStatusObjective(frame, team_color, lamp_size):
         # 最大の色のインデックス -> イカランプの状態
         status = lamp_color[idx].index(max_color)
         # リストに記録
-        lamp_list[i] = status
+        status_list[i] = status
 
-    return lamp_list
+    return status_list
 
 
 def getStatusSubjective(frame, team_color, shape_list, lamp_size):
     ''' 主観視点：イカランプの状態を取得する '''
     # 記録リスト 0:dead  1:alive  2:sp
-    lamp_list = ['nodata' for i in range(8)]
+    status_list = ['nodata' for i in range(8)]
 
     # 基準色リスト [黒, チームカラー, スペシャル状態]
     lamp_color = [['blk', color, 'spw'] for color in team_color]
@@ -356,9 +349,9 @@ def getStatusSubjective(frame, team_color, shape_list, lamp_size):
         # 最大の色のインデックス -> イカランプの状態
         status = lamp_color[idx].index(max_color)
         # リストに記録
-        lamp_list[i] = status
+        status_list[i] = status
 
-    return lamp_list
+    return status_list
 
 
 def getStatusMap(frame, team_color):
@@ -367,7 +360,7 @@ def getStatusMap(frame, team_color):
     ※自分の状態は判別できない
     '''
     # 記録リスト 0:dead  1:alive  2:sp
-    lamp_list = ['nodata' for i in range(7)]
+    status_list = ['nodata' for i in range(7)]
 
     # 7プレイヤー分
     for i in range(7):
@@ -382,7 +375,7 @@ def getStatusMap(frame, team_color):
 
         # 一致率が閾値以上ならたおされている
         if val_crs > thd_val:
-            doa = 0
+            status = 0
 
         # 通常かスペシャル状態か
         else:
@@ -391,76 +384,10 @@ def getStatusMap(frame, team_color):
                                         'spw', 'hsv', 'mask')
             # 閾値はちょっとゆるめに設定
             if val_spw > thd_val * 0.7:
-                doa = 2
+                status = 2
             else:
-                doa = 1
+                status = 1
         # 記録
-        lamp_list[i] = doa
+        status_list[i] = status
 
-    return lamp_list
-
-
-def test():
-    ''' 動作テスト '''
-
-    viewpoint = 'sub'
-    rule = 'zones'
-    target_name = 'image_' + viewpoint + '_' + rule + '_05.png'
-
-    img_dir = 'capture_image\\'
-    target_path = img_dir + target_name
-    fnames = glob.glob(target_path)
-
-    for img_path in fnames:
-        frame = cv2.imread(img_path)
-        print('====================================')
-        print(img_path[len(img_dir):])
-
-        # 俯瞰視点
-        if viewpoint == 'obj':
-            team_color = getTeamColor(frame)
-            print('team_color', team_color)
-
-            lamp_size = getSizeObjective(frame)
-            print('lamp_size ', lamp_size)
-
-            lamp_list = getStatusSubjective(frame, team_color, lamp_size)
-            print('lamp_list ', lamp_list)
-
-        # 主観視点
-        elif rule != 'map':
-            team_color = getTeamColor(frame)
-            print('team_color', team_color)
-
-            # shape_list = getShape(frame, team_color)
-            # print(shape_list[0:4])
-            # print(shape_list[4:8])
-
-            shape_list = ['ika', 'oct', 'ika', 'ika',
-                          'ika', 'oct', 'oct', 'oct']
-
-
-            lamp_size = getSizeSubjective(frame, team_color, shape_list)
-            print('lamp_size ', lamp_size)
-
-            status_list = getStatusSubjective(frame, team_color, shape_list, lamp_size)
-            print('status    ', status_list)
-
-        # マップ画面
-        else:
-            team_color = ['yel', 'blu']
-            # team_color = ['blu', 'yel']
-            map_list = getStatusMap(frame, team_color)
-            print(map_list)
-
-
-        # プレビュー
-        scale = 0.5
-        img_rsz = cv2.resize(frame, None, fx=scale, fy=scale)
-        cv2.imshow('Preview', img_rsz)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    test()
+    return status_list
