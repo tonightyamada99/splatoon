@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-import sys
 import csv
-import glob
 import os.path
 
 import csvread
@@ -12,6 +10,7 @@ import ikaRule
 import ikaStage
 import ikaStartEnd
 import ikaImageProcessing as iip
+
 
 # 処理メーターの名前
 meter_name = 'Infomation'
@@ -72,19 +71,19 @@ def selectViewpoint(frame):
     return viewpoint, user_num
 
 
-def getinfo(video_path, overwrite=0):
+def getinfo(video_path, out_dir=None, overwrite=0):
     ''' 試合動画の情報を取得する '''
     # 動画の名前の取得
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
     video_dir = os.path.dirname(video_path)
     # 出力先
-    out_path = video_dir + '\\' + video_name + '_info.csv'
+    out_dir = video_dir if not out_dir else out_dir
+    out_path = out_dir + '\\' + video_name + '_info.csv'
 
     # 取得状況の把握
     if os.path.exists(out_path) and overwrite==0:
-        print('情報取得済み')
+        iip.printMeter(meter_name, 1, 1)
         info_list = csvread.readAsList(out_path)
-
     else:
         # 動画読み込み
         video = cv2.VideoCapture(video_path)
@@ -182,32 +181,3 @@ def getinfo(video_path, overwrite=0):
             writer.writerows(info_list)
 
     return info_list
-
-
-def main():
-    ''' メイン処理 '''
-    # ビデオディレクトリ取得 *はワイルドカード
-    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_rain_*.avi' )
-
-    sys.stdout.write('=' * 50)
-    for video_path in fnames:
-        sys.stdout.write('\n' + os.path.basename(video_path))
-
-        info_list = getinfo(video_path, 1)
-
-        # print('--------------------------------------------------')
-        # for idx in range(len(info_list[0])):
-        #     print(info_list[0][idx], info_list[1][idx])
-
-
-        import ikaVideoScreen
-        ikaVideoScreen.getScreen(video_path, 1)
-
-        import ikaVideoData
-        ikaVideoData.getData(video_path, 1)
-
-        sys.stdout.write('\n' + '=' * 50)
-
-
-if __name__ == "__main__":
-    main()

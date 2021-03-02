@@ -2,11 +2,9 @@
 
 import cv2
 import csv
-import sys
-import glob
 import os.path
-import csvread
 
+import csvread
 import ikaLamp
 import ikaZones
 import ikaTower
@@ -19,7 +17,7 @@ import ikaImageProcessing as iip
 meter_name = 'Data'
 
 
-def getData(video_path, overwrite=0):
+def getData(video_path, out_dir=None, overwrite=0):
     ''' 試合動画からカウントと生存状況を取得 '''
     # 動画の名前の取得
     video_name, video_ext = os.path.splitext(os.path.basename(video_path))
@@ -27,16 +25,15 @@ def getData(video_path, overwrite=0):
     # 読み込みファイル
     info_path   = video_dir + '\\' + video_name + '_info.csv'
     # 出力先
-    status_path = video_dir + '\\' + video_name + '_status.csv'
-    count_path  = video_dir + '\\' + video_name + '_count.csv'
+    out_dir = video_dir if not out_dir else out_dir
+    status_path = out_dir + '\\' + video_name + '_status.csv'
+    count_path  = out_dir + '\\' + video_name + '_count.csv'
 
     if not os.path.exists(info_path):
-        print('動画情報ファイルが見つかりません。')
-
+        iip.printMeter(meter_name, 1, 1)
     if os.path.exists(status_path) and os.path.exists(count_path) \
         and overwrite==0:
-        print('データ取得済み')
-
+        iip.printMeter(meter_name, 1, 1)
     else:
         # 動画の情報を読み込む
         info_dict = csvread.readAsDict(info_path)
@@ -82,8 +79,6 @@ def forObjective(video_path, info_dict):
 
     ### ここから動画処理 #####################################################
     fcount = 0
-    sys.stdout.flush()
-    sys.stdout.write('')
     while video.isOpened():
         # フレーム取得
         ret, frame = video.read()
@@ -161,8 +156,6 @@ def forSubjective(video_path, info_dict):
 
     ### ここから動画処理 #####################################################
     fcount = 0
-    sys.stdout.flush()
-    sys.stdout.write('')
     while video.isOpened():
         # フレーム取得
         ret, frame = video.read()
@@ -257,21 +250,3 @@ def getCount(frame, rule, zones_num=0, team_color=[]):
         count_frame = []
 
     return count_frame
-
-
-def main():
-    ''' メイン処理 '''
-    # ビデオディレクトリ取得 *はワイルドカード
-    fnames = glob.glob('D:\\splatoon_movie\\capture\\video_sub_rain*.mp4' )
-
-    sys.stdout.write('=' * 50)
-    for video_path in fnames:
-        sys.stdout.write('\n' + os.path.basename(video_path))
-
-        getData(video_path)
-
-        sys.stdout.write('\n' + '=' * 30)
-
-
-if __name__ == "__main__":
-    main()
