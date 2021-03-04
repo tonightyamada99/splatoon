@@ -31,7 +31,7 @@ T_cnt = 216
 B_cnt = 256
 
 # 「のこり」の一致率
-thd_rmn = 0.75
+thd_rmn = 0.7
 # カウント表示の幅
 width_count = 64
 
@@ -51,7 +51,7 @@ for ab in ['alfa', 'bravo']:
     bin_rmn = cv2.imread('.\\pbm\\tower_remaining_' + ab + '.pbm', -1)
     image_rmn.append(bin_rmn)
 
-# 数字画像
+# カウント数字画像
 image_act = []  # アルファ
 image_bct = []  # ブラボー
 for num in range(10):
@@ -124,7 +124,7 @@ def getControl(frame):
 def getCount(frame):
     ''' カウントを取得する '''
     # 記録リスト
-    count_list = ['nodata', 'nodata']
+    count_list = [100, 100]
 
     # アルファとブラボー
     for i in range(2):
@@ -144,7 +144,7 @@ def getCount(frame):
 
         # 表示が重なってカウントが見えない場合があるので閾値を設ける
         if maxVal > thd_rmn:
-             # 「のこり」の位置から数字の左右位置を算出
+            # 「のこり」の位置から数字の左右位置を算出
             width_rmn = bin_rmn.shape[1]
             center = L_rmn[i] + maxLoc[0] + width_rmn / 2
             left  = round(center - width_count / 2)
