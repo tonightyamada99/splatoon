@@ -177,12 +177,6 @@ def getNumber(image, pt1, pt2, image_num,
     # 閾値を取得
     thd_min, thd_max = convertThreshold(threshold, color_type)
 
-    # 数字の高さと幅の最大最小を取得
-    h_list = [image_num[i].shape[0] for i in range(10)]
-    w_list = [image_num[i].shape[1] for i in range(10)]
-    h_max, h_min = max(h_list), min(h_list)
-    w_max, w_min = max(w_list), min(w_list)
-
     # 対象の切り抜き
     left,  top    = pt1
     right, bottom = pt2
@@ -205,13 +199,37 @@ def getNumber(image, pt1, pt2, image_num,
         left_unit = maxLoc[0]
         bin_trm = bin_trm[:, 0:left_unit]
 
-    # ラベリング処理
-    retval, labels, stats, centroids = cv2.connectedComponentsWithStats(bin_trm)
-    retval = retval - 1
-    stats = np.delete(stats, 0, 0)
+    # 数字情報の取得
+    num_list = getNumberInfo(bin_trm, image_num, resize)
+
+    # 記録リストをx座標の大きい順（下の桁から上へ）にソート
+    num_list.sort(key=lambda x: x[1], reverse=True)
+    # ソートしたリストを数字に変換
+    # 桁の小さい順に並んでいるので(数字)×10^(インデックス)で変換できる
+    number = 0
+    for i, [num, x] in enumerate(num_list):
+        place = 10 ** i     # 桁:place
+        number += num * place
+
+    return number
+
+
+def getNumberInfo(image, image_num, resize='off'):
+    ''' 数字とその場所を取得する '''
+
+    # 比較画像の高さと幅の最大最小を取得
+    h_list = [image_num[i].shape[0] for i in range(10)]
+    w_list = [image_num[i].shape[1] for i in range(10)]
+    h_max, h_min = max(h_list), min(h_list)
+    w_max, w_min = max(w_list), min(w_list)
 
     # 認識した数字の記録リスト
     num_list = []
+
+    # ラベリング処理
+    retval, labels, stats, centroids = cv2.connectedComponentsWithStats(image)
+    retval = retval - 1
+    stats = np.delete(stats, 0, 0)
 
     for index in range(retval):
         # 各ラベルの座標と大きさ
@@ -221,9 +239,9 @@ def getNumber(image, pt1, pt2, image_num,
         h = stats[index][3]
 
         # 大きさが数字からかけ離れているものはノイズ
-        if h_min*0.8 < h < h_max*1.1 and w_min*0.8 < w < w_max*1.1:
+        if h_min*0.8 < h < h_max*1.2 and w_min*0.8 < w < w_max*1.2:
             # 対象を切り取り
-            bin_tmp = bin_trm[y:y+h, x:x+w]
+            bin_tmp = image[y:y+h, x:x+w]
 
             # 対象をリサイズ
             if resize != 'off':
@@ -234,7 +252,7 @@ def getNumber(image, pt1, pt2, image_num,
             # 対象を黒画像に貼り付け target
             # 数字ごとの大きさの違いに対応するため
             margin = round(h_max*0.1)
-            size = (h_max + margin*2, w_max + margin*2)
+            size = (h_max + margin*5, w_max + margin*3)
             bin_tgt = np.zeros(size, dtype=np.uint8)
             bin_tgt[margin:margin+h, margin:margin+w] = bin_tmp
 
@@ -255,17 +273,7 @@ def getNumber(image, pt1, pt2, image_num,
             # リストに記録
             num_list.append([num_tgt, x])
 
-
-    # 記録リストをx座標の大きい順（下の桁から上へ）にソート
-    num_list.sort(key=lambda x: x[1], reverse=True)
-    # ソートしたリストを数字に変換
-    # 桁の小さい順に並んでいるので(数字)×10^(インデックス)で変換できる
-    number = 0
-    for i, [num, x] in enumerate(num_list):
-        place = 10 ** i     # 桁:place
-        number += num * place
-
-    return number
+    return num_list
 
 
 def printMeter(name, now, all):
@@ -283,11 +291,3 @@ def printMeter(name, now, all):
     # テキスト表示
     sys.stdout.flush()
     sys.stdout.write(text)
-
-
-def test():
-    ''' 動作テスト '''
-
-
-if __name__ == "__main__":
-    test()
